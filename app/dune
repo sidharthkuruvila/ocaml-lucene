@@ -1,0 +1,3 @@
+(executable
+ (name lucene_tools)
+ (libraries unix lucene_codec))

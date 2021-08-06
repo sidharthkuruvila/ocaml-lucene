@@ -95,7 +95,9 @@ let read_assoc_list_of_strings di =
     if n = 0 then
       []
     else
-      (read_string di, read_string di) :: loop (n - 1) in
+      let k = read_string di in
+      let v = read_string di in
+      (k, v) :: loop (n - 1) in
   loop count
 
 let from_fd fd =

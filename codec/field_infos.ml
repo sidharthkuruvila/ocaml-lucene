@@ -79,7 +79,6 @@ let read_point_data version di =
   else
     (point_data_dimension_count, point_data_dimension_count, 0)
 
-
 let for_file fn =
   let f = Unix.openfile fn [Unix.O_RDONLY] 0 in
   let di = Data_input.from_fd f in
@@ -91,7 +90,6 @@ let for_file fn =
       []
     else begin
       let name = Data_input.read_string di in
-      Printf.printf "Field name: %s\n" name;
       let field_number = Data_input.read_vint di in
       let bits = Data_input.read_byte di in
       let store_term_vector = (bits land mask_store_term_vector) <> 0 in
@@ -124,3 +122,6 @@ let for_file fn =
   {
     field_infos;
   }
+
+let get_field { field_infos } n =
+  List.find (fun field_info -> field_info.field_number = n) field_infos

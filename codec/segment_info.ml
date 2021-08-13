@@ -1,4 +1,6 @@
 type t = {
+  name: string;
+  seg_id: string;
   index_header: Codec_util.index_header;
   version: Codec_util.lucene_version;
   min_version: Codec_util.lucene_version option;
@@ -17,7 +19,7 @@ let read_lucene_version di =
   { Codec_util.major; minor; bugfix }
 
 
-let for_file fn =
+let for_file ~name ~seg_id fn =
   let f = Unix.openfile fn [Unix.O_RDONLY] 0 in
   let di = Data_input.from_fd f in
   let index_header = Codec_util.read_header di in
@@ -44,6 +46,8 @@ let for_file fn =
     files;
     attributes;
     sort_fields;
+    name;
+    seg_id;
   }
 
 

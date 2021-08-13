@@ -1,5 +1,7 @@
 open Lucene_codec
 
+let dir = "/Users/sidharthkuruvila/src/lucene-playground/app/test-index"
+
 let print_assoc_list_of_strings l =
   List.iter (fun (k, v) -> Printf.printf " %s -> %s \n" k v) l
 
@@ -12,8 +14,10 @@ let print_index_header h =
   Printf.printf "Object id: %s; Suffix: %s \n" h.object_id h.suffix_bytes
 
 
+
+
 let read_segments_file () =
-  let f = "/Users/sidharthkuruvila/src/lucene-playground/app/test-index/segments_11" in
+  let f = "/Users/sidharthkuruvila/src/lucene-playground/app/test-index/segments_1c" in
   let segments = Segments.for_file f in
   let lucene_version = segments.lucene_version in
   let version = segments.version in
@@ -25,9 +29,9 @@ let read_segments_file () =
   Printf.printf "MS - major: %d; minor: %d; bugfix: %d\n"  ms_lucene_version.major ms_lucene_version.minor ms_lucene_version.bugfix;
   segments
 
-let read_segment_info_file prefix =
+let read_segment_info_file prefix seg_id =
   let f = Printf.sprintf "/Users/sidharthkuruvila/src/lucene-playground/app/test-index/%s.si" prefix in
-  let segment_info = Segment_info.for_file f in
+  let segment_info = Segment_info.for_file f ~name:prefix ~seg_id in
   let index_header = segment_info.index_header in
   let lucene_version = segment_info.version in
   let doc_count = segment_info.doc_count in
@@ -44,23 +48,27 @@ let read_segment_info_file prefix =
   print_list_of_strings files;
   print_endline "Attributes";
   print_assoc_list_of_strings attributes;
-  ()
+  segment_info
 
 
 let read_field_infos_file prefix =
   let f = Printf.sprintf "/Users/sidharthkuruvila/src/lucene-playground/app/test-index/%s.fnm" prefix in
   let field_infos = Field_infos.for_file f in
   let size = Field_infos.field_infos_count field_infos in
-  Printf.printf "Size: %d" size
+  Printf.printf "Size: %d\n" size;
+  field_infos
 
 let _ =
   let segments = read_segments_file () in
   List.iter (fun segment ->
     let prefix = segment.Segments.Segment.seg_name in
+    let seg_id = segment.seg_id in
     Printf.printf "Prefix: %s\n" prefix;
     print_endline "";
-    read_segment_info_file prefix;
+    let segment_info = read_segment_info_file prefix seg_id in
     print_endline "";
-    read_field_infos_file prefix
+    let field_infos = read_field_infos_file prefix in
+    let segment_read_state = Segment_read_state.make ~dir ~segment_info ~field_infos in
+    ignore (Block_tree_terms_reader.create segment_read_state)
   ) segments.segments
 

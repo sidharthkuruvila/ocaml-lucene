@@ -7,6 +7,8 @@ type t = {
 
 let get_file_pointer di = di.idx
 
+let set_file_pointer di idx = di.idx <- idx
+
 let get_file_length di =
   let st = Unix.fstat di.fd in
   st.Unix.st_size
@@ -108,3 +110,16 @@ let from_fd fd =
     data = Unix.map_file fd Bigarray.Int8_unsigned Bigarray.c_layout false [|sz|];
     idx = 0;
   }
+
+let read_byte_array di l =
+  let arr = Bigarray.array1_of_genarray di.data in
+  let sub = Bigarray.Array1.sub arr di.idx l in
+  let new_arr = Bigarray.Array1.create Bigarray.Int8_unsigned Bigarray.c_layout l in
+  Bigarray.Array1.blit sub new_arr;
+  di.idx <- di.idx + l;
+  new_arr
+
+let copy di = {di with idx = di.idx}
+
+let close di =
+  Unix.close di.fd

@@ -26,6 +26,22 @@ let read_header di =
   let suffix_bytes = Data_input.read_bytes di suffix_length in
   { magic; name; version; object_id; suffix_bytes }
 
+let check_index_header ~codec_name ~min_version ~max_version ~expected_id ~segment_suffix di=
+  let header = read_header di in
+  if header.name <> codec_name then failwith "Header name did not match codec name";
+  if min_version > header.version || header.version > max_version then failwith "Header version did not match expected";
+  if expected_id <> header.object_id then failwith "Header id did not match expected";
+  if header.suffix_bytes <> segment_suffix then failwith "Header suffix did not match";
+  header.version
+
+let check_header ~codec_name ~min_version ~max_version di =
+  let magic = Data_input.read_int di in
+  let name = Data_input.read_string di in
+  let version = Data_input.read_uint di in
+  if magic <> codec_magic then failwith "Codec magic does not match";
+  if name <> codec_name then failwith (Printf.sprintf "Header name %s did not match codec name %s" name codec_name);
+  if min_version > version || version > max_version then failwith "Header version did not match expected"
+
 let read_lucene_version di =
   let major = Data_input.read_vint di in
   let minor = Data_input.read_vint di in

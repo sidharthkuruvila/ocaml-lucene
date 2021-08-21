@@ -6,7 +6,7 @@
 module Wrapper = struct
 type t = {
   fd: Unix.file_descr;
-  data: (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Genarray.t;
+  data: (int, Bigarray.int8_unsigned_elt, Bigarray.c_layout) Bigarray.Array1.t;
   mutable idx: int;
 }
 
@@ -15,7 +15,7 @@ type t = {
 let copy di = {di with idx = di.idx}
 
 let get_byte di i =
- Bigarray.Genarray.get di.data [| di.idx + i |]
+ Bigarray.Array1.get di.data  (di.idx + i)
 
 let inc_idx di n =
   di.idx <- di.idx + n
@@ -39,9 +39,10 @@ include Data_input.Make(Wrapper)
 let from_fd fd =
   let st = Unix.fstat fd in
   let sz = st.Unix.st_size in
+  let map = Unix.map_file fd Bigarray.Int8_unsigned Bigarray.c_layout false [|sz|] in
   {
     fd = fd;
-    data = Unix.map_file fd Bigarray.Int8_unsigned Bigarray.c_layout false [|sz|];
+    data = Bigarray.array1_of_genarray map;
     idx = 0;
   }
 

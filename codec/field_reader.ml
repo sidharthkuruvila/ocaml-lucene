@@ -7,8 +7,8 @@ type t = {
   doc_count: int;
   index_start_fp: Int64.t;
   (*This one has been closed so it shouldn't work, right?*)
-  meta_in: Data_input.t;
-  index_in: Data_input.t;
+  meta_in: Index_input.t;
+  index_in: Index_input.t;
   min_term: string;
   max_term: string;
 }

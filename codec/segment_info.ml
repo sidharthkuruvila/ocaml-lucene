@@ -13,28 +13,28 @@ type t = {
 }
 
 let read_lucene_version di =
-  let major = Data_input.read_int di in
-  let minor = Data_input.read_int di in
-  let bugfix = Data_input.read_int di in
+  let major = Index_input.read_int di in
+  let minor = Index_input.read_int di in
+  let bugfix = Index_input.read_int di in
   { Codec_util.major; minor; bugfix }
 
 
 let for_file ~name ~seg_id fn =
   let f = Unix.openfile fn [Unix.O_RDONLY] 0 in
-  let di = Data_input.from_fd f in
+  let di = Index_input.from_fd f in
   let index_header = Codec_util.read_header di in
   let version = read_lucene_version di in
-  let has_min_version = Data_input.read_byte di = 1 in
+  let has_min_version = Index_input.read_byte di = 1 in
   let min_version = if has_min_version then
     Some (read_lucene_version di)
   else
     None in
-  let doc_count = Data_input.read_int di in
-  let is_compound_file = Data_input.read_byte di = 1 in
-  let diagnostic_map = Data_input.read_assoc_list_of_strings di in
-  let files = Data_input.read_list_of_strings di in
-  let attributes = Data_input.read_assoc_list_of_strings di in
-  let sort_fields = Data_input.read_list_of_strings di in
+  let doc_count = Index_input.read_int di in
+  let is_compound_file = Index_input.read_byte di = 1 in
+  let diagnostic_map = Index_input.read_assoc_list_of_strings di in
+  let files = Index_input.read_list_of_strings di in
+  let attributes = Index_input.read_assoc_list_of_strings di in
+  let sort_fields = Index_input.read_list_of_strings di in
   Codec_util.check_footer di;
   {
     index_header;

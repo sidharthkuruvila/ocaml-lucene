@@ -28,42 +28,42 @@ type t = {
 }
 
 let read_doc_values_updates_files di =
-  let count = Data_input.read_int di in
+  let count = Index_input.read_int di in
   let rec loop n =
     if n = 0 then
       []
     else
-      let key = Data_input.read_int di in
-      let value = Data_input.read_list_of_strings di in
+      let key = Index_input.read_int di in
+      let value = Index_input.read_list_of_strings di in
       (key, value) :: loop (n - 1) in
   loop count
 
 let for_file fn =
   let f = Unix.openfile fn [Unix.O_RDONLY] 0 in
-  let di = Data_input.from_fd f in
+  let di = Index_input.from_fd f in
   let _ = Codec_util.read_header di in
   let lucene_version = Codec_util.read_lucene_version di in
-  let index_created_major_version = Data_input.read_vint di in
-  let version = Data_input.read_long di in
-  let name_counter = Data_input.read_vlong di in
-  let seg_count = Data_input.read_int di in
+  let index_created_major_version = Index_input.read_vint di in
+  let version = Index_input.read_long di in
+  let name_counter = Index_input.read_vlong di in
+  let seg_count = Index_input.read_int di in
   let ms_lucene_version = Codec_util.read_lucene_version di in
   let read_segments _ =
-    let seg_name = Data_input.read_string di in
+    let seg_name = Index_input.read_string di in
     print_endline seg_name;
-    let seg_id = Data_input.read_bytes di Codec_util.id_length in
-    let seg_codec = Data_input.read_string di in
-    let del_gen = Data_input.read_long di in
-    let del_count = Data_input.read_int di in
-    let field_infos_gen = Data_input.read_long di in
-    let doc_values_gen = Data_input.read_long di in
-    let soft_del_count = Data_input.read_int di in
-    let has_scid = Data_input.read_byte di = 1 in
+    let seg_id = Index_input.read_bytes di Codec_util.id_length in
+    let seg_codec = Index_input.read_string di in
+    let del_gen = Index_input.read_long di in
+    let del_count = Index_input.read_int di in
+    let field_infos_gen = Index_input.read_long di in
+    let doc_values_gen = Index_input.read_long di in
+    let soft_del_count = Index_input.read_int di in
+    let has_scid = Index_input.read_byte di = 1 in
     let sci_id = if has_scid then
-      Some (Data_input.read_bytes di Codec_util.id_length)
+      Some (Index_input.read_bytes di Codec_util.id_length)
     else
       None in
-    let field_infos_files = Data_input.read_list_of_strings di in
+    let field_infos_files = Index_input.read_list_of_strings di in
     let doc_values_updates_files = read_doc_values_updates_files di in
     [{
       Segment.seg_name;
@@ -79,7 +79,7 @@ let for_file fn =
       doc_values_updates_files;
     }] in
   let segments = read_segments seg_count in
-  let user_data = Data_input.read_assoc_list_of_strings di in
+  let user_data = Index_input.read_assoc_list_of_strings di in
   Codec_util.check_footer di;
   {
     lucene_version;

@@ -67,39 +67,39 @@ let field_infos_count field_infos =
   List.length field_infos.field_infos
 
 let read_point_data version di =
-  let point_data_dimension_count = Data_input.read_vint di in
+  let point_data_dimension_count = Index_input.read_vint di in
   if point_data_dimension_count <> 0 then
     let point_index_dimension_count =
       if version >= format_selective_indexing then
-        Data_input.read_vint di
+        Index_input.read_vint di
       else
         point_data_dimension_count in
-    let point_num_bytes = Data_input.read_vint di in
+    let point_num_bytes = Index_input.read_vint di in
     (point_data_dimension_count, point_index_dimension_count, point_num_bytes)
   else
     (point_data_dimension_count, point_data_dimension_count, 0)
 
 let for_file fn =
   let f = Unix.openfile fn [Unix.O_RDONLY] 0 in
-  let di = Data_input.from_fd f in
+  let di = Index_input.from_fd f in
   let index_header = Codec_util.read_header di in
   let version = index_header.version in
-  let size = Data_input.read_vint di in
+  let size = Index_input.read_vint di in
   let rec loop n =
     if n = 0 then
       []
     else begin
-      let name = Data_input.read_string di in
-      let field_number = Data_input.read_vint di in
-      let bits = Data_input.read_byte di in
+      let name = Index_input.read_string di in
+      let field_number = Index_input.read_vint di in
+      let bits = Index_input.read_byte di in
       let store_term_vector = (bits land mask_store_term_vector) <> 0 in
       let omit_norms = (bits land mask_omit_norms) <> 0 in
       let store_payloads = (bits land mask_store_payloads) <> 0 in
       let is_soft_deletes_field = (bits land mask_soft_deletes_field) <> 0 in
-      let index_options = Index_options.from_code (Data_input.read_byte di) in
-      let doc_values_type = Doc_values_types.from_code (Data_input.read_byte di) in
-      let doc_values_gen = Data_input.read_long di in
-      let attributes = Data_input.read_assoc_list_of_strings di in
+      let index_options = Index_options.from_code (Index_input.read_byte di) in
+      let doc_values_type = Doc_values_types.from_code (Index_input.read_byte di) in
+      let doc_values_gen = Index_input.read_long di in
+      let attributes = Index_input.read_assoc_list_of_strings di in
       let (point_data_dimension_count, point_index_dimension_count, point_num_bytes) = read_point_data version di in
       {
         name;

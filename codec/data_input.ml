@@ -1,3 +1,11 @@
+
+module type Data_input = sig
+  type t
+  val read_byte : t -> int
+  val read_bytes : t -> int -> string
+end
+
+
 module type Data_input_ops = sig
   type t
   val read_byte : t -> int
@@ -77,3 +85,4 @@ module Make(M : Data_input_ops) = struct
         (k, v) :: loop (n - 1) in
     loop count
 end
+

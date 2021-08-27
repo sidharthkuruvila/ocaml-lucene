@@ -10,8 +10,6 @@ type t = {
   mutable idx: int;
 }
 
-
-
 let copy di = {di with idx = di.idx}
 
 let get_byte di i =
@@ -52,6 +50,13 @@ let close di =
 let get_file_pointer di = di.idx
 
 let set_file_pointer di idx = di.idx <- idx
+
+let slice di offset length =
+  let data = Bigarray.Array1.sub di.data offset length in
+  {di with data}
+
+let get_buffer_length di =
+  Bigarray.Array1.dim di.data
 
 let get_file_length di =
   let st = Unix.fstat di.fd in

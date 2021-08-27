@@ -34,7 +34,7 @@ let create { Segment_read_state.dir; segment_info; field_infos} =
      []
     else
       let field = Index_input.read_vint meta_input in
-      let num_terms = Index_input.read_vlong meta_input in
+      let num_terms = Int64.to_int (Index_input.read_vlong meta_input) in
       if num_fields <= 0 then failwith "not enough terms";
       let root_code = Index_input.read_string meta_input in
       let field_info = Field_infos.get_field field_infos field in

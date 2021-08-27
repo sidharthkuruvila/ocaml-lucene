@@ -16,8 +16,8 @@ end
 type t = {
   empty_output: string option;
   input_type: Input_type.t;
-  start_node: Int64.t;
-  num_bytes: Int64.t;
+  start_node: int;
+  num_bytes: int;
   index_in: Index_input.t;
   index_file_pointer: int;
 }
@@ -39,7 +39,7 @@ end
 
 let first_arc fst =
     {
-      Arc.target = Int64.to_int fst.start_node;
+      Arc.target = fst.start_node;
 (*      Arc.output = Some "";*)
 (*      is_final_arc = true;*)
 (*      is_last_arc = true;*)
@@ -63,8 +63,8 @@ let read ~meta_in ~index_in =
     None in
   let t = Index_input.read_byte meta_in in
   let input_type = Input_type.from_code t in
-  let start_node = Index_input.read_vlong meta_in in
-  let num_bytes = Index_input.read_vlong meta_in in
+  let start_node = Int64.to_int (Index_input.read_vlong meta_in) in
+  let num_bytes = Int64.to_int (Index_input.read_vlong meta_in) in
   let index_file_pointer = Index_input.get_file_pointer index_in in
   {
     empty_output;
@@ -75,3 +75,6 @@ let read ~meta_in ~index_in =
     index_file_pointer;
   }
 
+let get_reverse_reader fst =
+  let sub = Index_input.slice fst.index_in fst.index_file_pointer fst.num_bytes in
+  Reversed_index_input.from_index_input sub

@@ -76,5 +76,7 @@ let read ~meta_in ~index_in =
   }
 
 let get_reverse_reader fst =
+  Printf.printf "File pointer: %d, num bytes: %d\n" fst.index_file_pointer fst.num_bytes;
   let sub = Index_input.slice fst.index_in fst.index_file_pointer fst.num_bytes in
+  print_endline "Created sub array";
   Reversed_index_input.from_index_input sub

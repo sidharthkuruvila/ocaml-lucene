@@ -51,7 +51,7 @@ let create { Segment_read_state.dir; segment_info; field_infos} =
       let index_input_clone = Index_input.copy index_input in
       Index_input.set_file_pointer index_input_clone (Int64.to_int index_start_fp);
 (*    Printf.printf "index start fp = %d\n" (Int64.to_int index_start_fp);*)
-      let _ = Fst.read ~meta_in:meta_input ~index_in:index_input_clone in
+      let fst = Fst.read ~meta_in:meta_input ~index_in:index_input_clone in
       (field, {
         Field_reader.field_info: Field_infos.field_info;
         num_terms;
@@ -65,12 +65,11 @@ let create { Segment_read_state.dir; segment_info; field_infos} =
         index_in = index_input;
         min_term;
         max_term;
-      })
+      }, fst)
       ::
       loop (n - 1) in
   let field_readers = loop num_fields in
   let index_length = Index_input.read_long meta_input in
   let terms_length = Index_input.read_long meta_input in
   Printf.printf "index length %d, terms_length %d" (Int64.to_int index_length) (Int64.to_int terms_length);
-
   (block_tree_terms_reader, field_readers))

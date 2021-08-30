@@ -61,3 +61,5 @@ let get_buffer_length di =
 let get_file_length di =
   let st = Unix.fstat di.fd in
   st.Unix.st_size
+
+let get_backing_array di = di.data

@@ -1,3 +1,5 @@
+open Lucene_data_input
+
 type t = {
   field_info: Field_infos.field_info;
   num_terms: int;

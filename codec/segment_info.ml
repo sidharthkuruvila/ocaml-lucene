@@ -1,3 +1,5 @@
+open Lucene_data_input
+
 type t = {
   name: string;
   seg_id: string;

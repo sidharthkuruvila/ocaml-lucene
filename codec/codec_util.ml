@@ -1,3 +1,5 @@
+open Lucene_data_input
+
 let id_length = 16
 let footer_length = 16
 let codec_magic = 0x3fd76c17

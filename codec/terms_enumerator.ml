@@ -1,3 +1,4 @@
+open Lucene_data_input
 
 let arcs_for_direct_addressing = 1 lsl 6
 let bit_last_arc = 1 lsl 1

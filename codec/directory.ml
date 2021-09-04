@@ -1,3 +1,5 @@
+open Lucene_data_input
+
 type t = string
 
 let get_segment_file dir =

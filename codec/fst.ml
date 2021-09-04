@@ -1,3 +1,5 @@
+open Lucene_data_input
+
 module Input_type = struct
   type t =
   | Byte1

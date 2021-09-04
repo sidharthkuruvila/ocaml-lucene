@@ -1,3 +1,5 @@
+open Lucene_data_input
+
 type lucene_version = (int * int * int)
 
 module Segment = struct

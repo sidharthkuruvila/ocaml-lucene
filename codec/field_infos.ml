@@ -1,3 +1,5 @@
+open Lucene_data_input
+
 let mask_store_term_vector = 0x1
 let mask_omit_norms = 0x2
 let mask_store_payloads = 0x4

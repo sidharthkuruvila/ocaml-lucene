@@ -1,3 +1,5 @@
+open Lucene_data_input
+
 type t = {
   terms_in: Index_input.t;
   index_in: Index_input.t;

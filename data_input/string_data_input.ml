@@ -34,3 +34,5 @@ let from_string str = {
   Wrapper.data = str;
   pos = 0
 }
+
+let skip_bytes di n = set_position di (get_position di + n)

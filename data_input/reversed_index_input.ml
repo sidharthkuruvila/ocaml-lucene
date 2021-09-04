@@ -34,3 +34,5 @@ let from_index_input input = {
   Wrapper.data = Index_input.get_backing_array input;
   pos = 0
 }
+
+let skip_bytes di n = set_position di (get_position di - n)

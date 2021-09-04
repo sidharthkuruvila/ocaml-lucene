@@ -106,6 +106,5 @@ module Make(M : Data_input_ops) = struct
         (k, v) :: loop (n - 1) in
     loop count
 
-  let skip_bytes di n = set_position di (get_position di + n)
 end
 

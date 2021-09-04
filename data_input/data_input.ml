@@ -1,15 +1,36 @@
-
-module type Data_input = sig
-  type t
-  val read_byte : t -> int
-  val read_bytes : t -> int -> string
-end
-
-
 module type Data_input_ops = sig
   type t
+
+  (**
+   * Read a single byte and update the current position
+   *)
   val read_byte : t -> int
+
+  (**
+   * Read n bytes and update the current position
+   *)
   val read_bytes : t -> int -> string
+
+  (**
+   * Get a single byte at n bytes from current position
+   *)
+  val get_byte : t -> int -> int
+
+  (**
+   * Set the current position
+   *)
+  val set_position : t -> int -> unit
+
+  (**
+   * Get the current position
+   *)
+  val get_position : t -> int
+
+  (**
+   * Create a clone of the data input that will
+   * update its position independently
+   *)
+  val copy: t -> t
 end
 
 
@@ -84,5 +105,7 @@ module Make(M : Data_input_ops) = struct
         let v = read_string di in
         (k, v) :: loop (n - 1) in
     loop count
+
+  let skip_bytes di n = set_position di (get_position di + n)
 end
 

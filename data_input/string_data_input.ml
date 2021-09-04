@@ -18,6 +18,14 @@ module Wrapper = struct
     done;
     rii.pos <- rii.pos + n;
     Bytes.to_string bs
+
+  let get_byte rii n = int_of_char (String.get rii.data (rii.pos + n))
+
+  let set_position rii n = rii.pos <- n
+
+  let get_position rii = rii.pos
+
+  let copy rii = { rii with pos = rii.pos }
 end
 
 include Data_input.Make(Wrapper)
@@ -26,11 +34,3 @@ let from_string str = {
   Wrapper.data = str;
   pos = 0
 }
-
-let get_byte rii n = String.get rii.Wrapper.data (rii.pos + n)
-
-let set_position rii n = rii.Wrapper.pos <- n
-
-let get_position rii = rii.Wrapper.pos
-
-let skip_bytes rii n = rii.Wrapper.pos <- rii.Wrapper.pos + n

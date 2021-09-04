@@ -4,7 +4,7 @@ The terms index is split into two files an index and a dictionary
 The index is an FST(Finite State Transducer). It works similar to a prefix tree where it points to the location of the prefix of a term in the dictionary.
 
 
-### The implementation of the FST.
+# The implementation of the FST.
 
 The FST is represented in terms of the arcs between states. 
 
@@ -26,7 +26,7 @@ There are thee representations
 2. Binary Search
 3. Linear Scan
 
-### Direct Addressing
+## Direct Addressing
 
 With direct addressing it is possible to jump straight to the arc that matches the next label.
 
@@ -59,9 +59,24 @@ If the bit_target_next flag is set simply jump to the next node by jumping to th
 Otherwise read the position from arc data as a vint.
 
 
-### Constructing the paths
+## Constructing the paths
 
 The path construction seems a bit strange.
 
-If the arc is a final arc but the next node is not the stop node the path is the final output of the current arc.
+If the arc is a final arc, but the next node is not the stop node the path is the final output of the current arc.
 If the next node is the stop node then the path is the output of the current arc.
+
+### Structure of the path
+
+The path is a byte array that can be wrapped by a data input.
+
+Read a vlong code. The lowest two bytes are bit flags. The code can be right shifted to get a pointer in the dictionary file to the starting block to search for the term. 
+
+The bit flags are
+
+* bit_has_terms: The block has term data
+* bit_is_floor: Is a floor block
+
+Question: What does it mean to have terms and what is a floor block.
+
+The next step is to read the next floor label byte. This gives the upperbound of labels found in the current block

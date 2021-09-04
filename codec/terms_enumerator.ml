@@ -128,6 +128,7 @@ let next_arc_using_direct_addressing label ~input =
         final_output;
         next_arc;
       }
+
 let next_arc label ~input ~arc =
   (* If the target is either 1 or 0
      there are no following arcs. *)
@@ -151,6 +152,41 @@ let next_arc label ~input ~arc =
     else
       failwith "not implemented yet, only next_arc_using_direct_addressing has been implemented"
   end
+
+let find_block output target_label =
+  (* Get the file pointer for the block likely to contain the term
+     the target_label is the chracter after the prefix. Each block contains terms
+     for a range of target_label characters. For example if the target_label is g and
+     the first block contains terms that would have matched for target_labels up to e
+     we need to move to the next block. *)
+  let output_reader = String_data_input.from_string output in
+  let code = String_data_input.read_vlong output_reader in
+  let fp = Int64.to_int (Int64.shift_right_logical code output_flags_num_bits) in
+  let has_terms = Int64.logand code 2L <> 0L in
+  let is_floor = Int64.logand code 1L <> 0L in
+  Printf.printf "fp = %d, has_terms = %b, is_Floor = %b\n" fp has_terms is_floor;
+  if not is_floor then failwith "Block is not floor, don't know how to handle that";
+  let num_floor_follow_blocks = String_data_input.read_vint output_reader in
+  let next_floor_label = String_data_input.read_byte output_reader in
+  Printf.printf "Num floor follow blocks: %d, next floor label %d\n" num_floor_follow_blocks next_floor_label;
+  if target_label < next_floor_label then
+    (fp, has_terms)
+  else
+    let rec loop n fp =
+      if n = 0 then failwith "Should never run out of blocks to scan";
+      let code = String_data_input.read_vlong output_reader in
+      let new_fp = fp + Int64.to_int (Int64.shift_right_logical code 1) in
+      let has_terms = Int64.logand code 1L <> 0L in
+      if num_floor_follow_blocks = 1 then
+        (new_fp, has_terms)
+      else
+        let next_floor_label = String_data_input.read_byte output_reader in
+        if target_label < next_floor_label then
+          (new_fp, has_terms)
+        else
+          loop (n - 1) new_fp in
+    loop num_floor_follow_blocks fp
+
 let seek_exact ~field_reader ~fst target =
   print_endline "seeking exact";
   Printf.printf "target = %s size = %d\n" target (Field_reader.get_size field_reader);
@@ -171,7 +207,6 @@ let seek_exact ~field_reader ~fst target =
       if n = target_length then
         [prev_arc]
       else
-
         let label = int_of_char (String.get target n) in
         Printf.printf "loop index %d\n" n;
         let arc_option = next_arc label ~input ~arc:prev_arc in
@@ -195,21 +230,12 @@ let seek_exact ~field_reader ~fst target =
     let output = build_output path in
     Printf.printf "Output = %s\n" (Hex_util.hex_of_string output);
     (* SegmentTermsEnum::pushFrame *)
-    let output_reader = String_data_input.from_string output in
-    let code = String_data_input.read_vlong output_reader in
-    let fp = Int64.to_int (Int64.shift_right_logical code output_flags_num_bits) in
-    let has_terms = Int64.logand code 2L <> 0L in
-    let is_floor = Int64.logand code 1L <> 0L in
-    Printf.printf "fp = %d, has_terms = %b, is_Floor = %b\n" fp has_terms is_floor;
-    let floor_data = if is_floor then
-      let num_floor_follow_blocks = String_data_input.read_vint output_reader in
-      let next_floor_label = String_data_input.read_byte output_reader in
-      Some (num_floor_follow_blocks, next_floor_label)
-    else
-      None in
-    if floor_data <> None then print_endline "there is floor data";
     (* SegmentTermsEnumFrame::scanToFloorFrame *)
-    
+    (* The length of the prefix is the length of path traversed along the arcs minus 1 *)
+    let prefix_length = List.length path - 1 in
+    let target_label = int_of_char (String.get target prefix_length) in
+    let (fp, has_terms) = find_block output target_label in
+    Printf.printf "Prefix length = %d, fp = %d, has_terms = %b \n" prefix_length fp has_terms;
     List.iteri (fun i arc -> Printf.printf "%d -> %s\n" i (Arc.show arc)) path;
 
 (*    let arc = next_arc label ~input ~arc:start_arc |> Option.get in*)

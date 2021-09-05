@@ -187,7 +187,18 @@ let find_block output target_label =
           loop (n - 1) new_fp in
     loop num_floor_follow_blocks fp
 
-let seek_exact ~field_reader ~fst target =
+let debug_print_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes =
+  let bytes_reader = String_data_input.from_string suffix_bytes in
+  let length_bytes_reader = String_data_input.from_string suffix_length_bytes in
+  let rec loop n =
+    if n > 0 then
+       let l = String_data_input.read_vint length_bytes_reader in
+       let s = String_data_input.read_bytes bytes_reader l in
+       Printf.printf "%d: %s\n" n s;
+       loop (n - 1) in
+  loop ent_count
+
+let seek_exact ~block_tree_terms_reader ~field_reader ~fst target =
   print_endline "seeking exact";
   Printf.printf "target = %s size = %d\n" target (Field_reader.get_size field_reader);
   print_endline field_reader.min_term ;
@@ -237,38 +248,33 @@ let seek_exact ~field_reader ~fst target =
     let (fp, has_terms) = find_block output target_label in
     Printf.printf "Prefix length = %d, fp = %d, has_terms = %b \n" prefix_length fp has_terms;
     List.iteri (fun i arc -> Printf.printf "%d -> %s\n" i (Arc.show arc)) path;
-
-(*    let arc = next_arc label ~input ~arc:start_arc |> Option.get in*)
-    (*Reversed_index_input.set_position input fst.Fst.start_node;
-    let flags = Reversed_index_input.read_byte input in*)
-(*    Printf.printf "Arc = %s\n" (Arc.show arc);*)
-    None
-    (*let input = Fst.get_reverse_reader fst in
-    let rec loop n =
-      if n = Field_reader.get_size field_reader then
-        Some true
+    if not has_terms then
+      None
+    else
+      let terms_in = Index_input.copy (block_tree_terms_reader.Block_tree_terms_reader.terms_in) in
+      Index_input.set_position terms_in fp;
+      let code = Index_input.read_vint terms_in in
+      let ent_count = code lsr 1 in
+      assert (ent_count > 0);
+      Printf.printf "Ent count = %d\n" ent_count;
+      (* We only support newer segments with compressed suffixes ie >= v5 *)
+      let code = Index_input.read_vlong terms_in in
+      let is_leaf_block = Int64.logand code 4L <> 0L in
+      let num_suffix_bytes = Int64.to_int (Int64.shift_right_logical code 3) in
+      let compression_algo = Compression_algorithm.get_decompression_algo
+        (Int64.to_int (Int64.logand code 3L)) in
+      let suffix_bytes = compression_algo terms_in num_suffix_bytes in
+      Printf.printf "is leaf block: %b, suffix bytes: %s\n" is_leaf_block suffix_bytes;
+      let code = Index_input.read_vint terms_in in
+      let num_suffix_length_bytes = code lsr 1 in
+      let all_equal = code land 1 <> 0 in
+      let suffix_length_bytes = if all_equal then
+        let ch = Index_input.read_byte terms_in |> char_of_int in
+        String.make num_suffix_length_bytes ch
       else
-        let label = String.get target n in
-        Reversed_index_input.set_position input fst.Fst.start_node;
-        let flags = Reversed_index_input.read_byte input in
-        if flags = arcs_for_direct_addressing then
-          let num_arcs = Reversed_index_input.read_vint input in
-          let bytes_per_arc = Reversed_index_input.read_vint input in
-          let bit_table_start = Reversed_index_input.get_position input in
-          Reversed_index_input.skip_bytes input ((num_arcs + 7) lsl 3);
-          let first_label = Reversed_index_input.read_byte input in
-          let pos_arc_start = Reversed_index_input.get_position input in
-          let arc_index = label - first_label in
-          if arc_index < 0 || arc_index >= num_arcs then
-            None
-          else if not (is_bit_set arc_index ~input ~bit_table_start) then
-            None
-          else
-            let presence_index = count_bits_upto arc_index ~input ~bit_table_start in
-            Reversed_index_input.set_position input (pos_arc_start - presence_index * bytes_per_arc);
-            None
-        else
-          None in
-    loop 0*)
+        Index_input.read_bytes terms_in num_suffix_length_bytes in
+      Printf.printf "sufix length bytes: %d\n" (String.length suffix_length_bytes);
+      debug_print_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes;
+      None
 
 

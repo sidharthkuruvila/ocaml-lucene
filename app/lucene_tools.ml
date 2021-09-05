@@ -73,10 +73,10 @@ let _ =
     print_endline "";
     let field_infos = read_field_infos_file prefix in
     let segment_read_state = Segment_read_state.make ~dir ~segment_info ~field_infos in
-    let (_, field_readers) = (Block_tree_terms_reader.create segment_read_state) in
+    let (block_tree_terms_reader, field_readers) = (Block_tree_terms_reader.create segment_read_state) in
     (*List.iter (fun (_, fi) -> print_endline fi.Field_reader.field_info.name) field_readers;*)
     let (_, field_reader, fst) = find_field "title" ~field_readers in
     print_endline "in hee";
-    ignore (Terms_enumerator.seek_exact ~field_reader ~fst "abc")
+    ignore (Terms_enumerator.seek_exact ~block_tree_terms_reader ~field_reader ~fst "abc")
   ) segments.segments
 

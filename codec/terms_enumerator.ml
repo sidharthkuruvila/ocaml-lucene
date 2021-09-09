@@ -187,6 +187,18 @@ let find_block output target_label =
           loop (n - 1) new_fp in
     loop num_floor_follow_blocks fp
 
+let read_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes =
+  let bytes_reader = String_data_input.from_string suffix_bytes in
+  let length_bytes_reader = String_data_input.from_string suffix_length_bytes in
+  let rec loop n =
+    if n = 0 then
+       []
+    else
+       let l = String_data_input.read_vint length_bytes_reader in
+       let s = String_data_input.read_bytes bytes_reader l in
+       s :: (loop (n - 1)) in
+  loop ent_count
+
 let debug_print_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes =
   let bytes_reader = String_data_input.from_string suffix_bytes in
   let length_bytes_reader = String_data_input.from_string suffix_length_bytes in
@@ -274,7 +286,21 @@ let seek_exact ~block_tree_terms_reader ~field_reader ~fst target =
       else
         Index_input.read_bytes terms_in num_suffix_length_bytes in
       Printf.printf "sufix length bytes: %d\n" (String.length suffix_length_bytes);
-      debug_print_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes;
+      let suffixes = read_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes in
+      List.iter (fun s -> Printf.printf "s -> %s\n" s) suffixes;
+      let stat_bytes = Index_input.read_string terms_in in
+      let bytes = Index_input.read_string terms_in in
+      Printf.printf "stat_bytes:";
+      String.iter (fun c -> Printf.printf "%d, " (int_of_char c)) stat_bytes;
+      print_newline ();
+      Printf.printf "bytes: \n";
+      String.iter (fun c -> Printf.printf "%d, " (int_of_char c)) bytes;
+      print_newline ();
+      (* fp end comes here *)
+      if is_leaf_block then
+        print_endline "is in leaf block"
+      else
+        failwith "is leaf block = false not implemented yet";
       None
 
 

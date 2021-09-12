@@ -1,0 +1,29 @@
+digraph G {
+  start_block [
+    label = "{StartBlock|<f0>code: vlong | num_follow_blocks: vint | <f1>follow_blocks: FollowBlock[num_follow_blocks] }"
+    shape = "record"
+  ]
+
+  start_block_code_bits [
+    label = "{Start block code bits |{{0|1|...}|{Block is a floorblock| Block has terms | Pointer to block in dictionary}}}"
+    shape = "record"
+  ]
+
+  follow_block [
+    label = "{FollowBlock| floor_byte: byte |<f0>code: vlong }"
+    shape = "record"
+  ]
+
+
+  follow_block_code_bits [
+    label = "{Follow block code bits |{{0|...}|{Block has terms | Relative position of block}}}"
+    shape = "record"
+  ]
+
+  start_block:f0 -> start_block_code_bits
+
+  start_block:f1 -> follow_block
+
+  follow_block:f0 -> follow_block_code_bits
+
+}

@@ -1,4 +1,9 @@
 open Lucene_data_input
+open Lucene_utils
+
+module Log = Logger.Make(struct
+ let name = "terms_enumerator"
+end)
 
 let arcs_for_direct_addressing = 1 lsl 6
 let bit_last_arc = 1 lsl 1
@@ -31,6 +36,14 @@ module Arc =  struct
    let next_arc_s = match next_arc with | Some n -> string_of_int n | None -> "<empty>" in
    Printf.sprintf "Arc { node: %d, output: '%s', final_output: '%s', next_arc: %s }"
      target (Hex_util.hex_of_string output) (Hex_util.hex_of_string final_output) next_arc_s
+end
+
+module Index_iterator = struct
+  type t = {
+    term: string;
+    prefix_size: int;
+
+  }
 end
 
 
@@ -296,11 +309,17 @@ let seek_exact ~block_tree_terms_reader ~field_reader ~fst target =
       Printf.printf "bytes: \n";
       String.iter (fun c -> Printf.printf "%d, " (int_of_char c)) bytes;
       print_newline ();
+      let target_suffix = String.sub target prefix_length ((String.length target) - prefix_length) in
+      Log.debug (fun () -> Printf.sprintf "target suffix: %s\n" target_suffix);
+      Assert.check_implemented is_leaf_block "if_leaf_block = false";
+      let found_term = List.exists (fun x -> x = target_suffix) suffixes in
+      Log.debug (fun () -> Printf.sprintf "found term: %b" found_term);
       (* fp end comes here *)
-      if is_leaf_block then
-        print_endline "is in leaf block"
-      else
-        failwith "is leaf block = false not implemented yet";
+(*      let found_term = if is_leaf_block then begin*)
+(*        List.exists (fun x -> x =*)
+
+(*      end else*)
+(*        failwith "is leaf block = false not implemented yet";*)
       None
 
 

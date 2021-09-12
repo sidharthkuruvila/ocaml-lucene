@@ -1,0 +1,33 @@
+digraph G {
+  dictionary_block [
+    label = "{
+      DictionaryBlock
+      | <f0> code: vint
+      | <f1> suffix_code: vlong
+      | compressed_suffix_bytes: byte[num_suffix_bytes]
+      | <f2> suffix_lengths_code: vint
+      | suffix_lengths_bytes: \n byte[num_suffix_lengths_bytes] \| vint[entity_count] ? not all_equal
+      | suffix_length: byte ? all_equal
+    }"
+    shape = "record"
+  ]
+
+  dictionary_block_code_1 [
+    label = "{ Dictionary Block Code | {{0 |...} | {Is last in floor | Entity count}}}"
+    shape = "record"
+  ]
+
+  dictionary_block_code_2 [
+    label = "{ Suffix Code | {{0..1 | 2 | ...} | { Compression Algorithm | Is Leaf Block | Num suffix Bytes }}}"
+    shape = "record"
+  ]
+
+  dictionary_block_code_3 [
+    label = "{ Suffix Lengths Code | {{0 | ...} | { All Equal | Num suffix lengths bytes }}}"
+    shape = "record"
+  ]
+
+  dictionary_block:f0 -> dictionary_block_code_1
+  dictionary_block:f1 -> dictionary_block_code_2
+  dictionary_block:f2 -> dictionary_block_code_3
+}

@@ -20,8 +20,14 @@ let output_flags_num_bits = 2
 
 let  bit_stop_node = 1 lsl 3
 
-
 let no_output = ""
+
+let index_of ~f l =
+  let rec loop i l =
+    match l with
+    | [] -> None
+    | x::rest -> if f x then Some i else loop (i + 1) rest in
+  loop 0 l
 
 module Arc =  struct
  type t = {
@@ -38,11 +44,26 @@ module Arc =  struct
      target (Hex_util.hex_of_string output) (Hex_util.hex_of_string final_output) next_arc_s
 end
 
+
+module Block_term_state = struct
+  type t = {
+    doc_freq: int;
+    total_term_freq: int;
+    metadata_upto: int;
+  }
+  let show state =
+    let { doc_freq; total_term_freq; metadata_upto } = state in
+    Printf.sprintf "BlockTermState { doc_freq: %d; total_term_freq: %d; metadata_upto: %d }" doc_freq total_term_freq metadata_upto
+
+end
+
 module Index_iterator = struct
   type t = {
     term: string;
-    prefix_size: int;
-
+    prefix_length: int;
+    suffixes: string list;
+    stats_reader: String_data_input.t;
+    postings_reader: String_data_input.t;
   }
 end
 
@@ -223,6 +244,29 @@ let debug_print_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes =
        loop (n - 1) in
   loop ent_count
 
+
+let decode_metadata ~include_freqs ~limit ~stats_reader =
+  let rec loop ~singleton_run_length  ~doc_freq ~total_term_freq n =
+    if n > limit then
+      { Block_term_state.doc_freq; total_term_freq; metadata_upto=(limit+1) }
+    else
+      if singleton_run_length > 0 then
+        loop ~singleton_run_length:(singleton_run_length - 1) ~doc_freq:1 ~total_term_freq:1 (n + 1)
+      else
+        let token = String_data_input.read_vint stats_reader in
+        let start_singleton_run = token land 1 == 1 in
+        if start_singleton_run then
+          let singleton_run_length = token lsr 1 in
+          loop ~singleton_run_length ~doc_freq:1  ~total_term_freq:1 (n + 1)
+        else
+          let doc_freq = token lsr 1 in
+          let total_term_freq = (if include_freqs then
+            String_data_input.read_vint stats_reader
+          else
+            0) + doc_freq in
+          loop ~singleton_run_length ~doc_freq ~total_term_freq (n + 1) in
+  loop ~singleton_run_length:0 ~doc_freq:0 ~total_term_freq:(-1) 0
+
 let seek_exact ~block_tree_terms_reader ~field_reader ~fst target =
   print_endline "seeking exact";
   Printf.printf "target = %s size = %d\n" target (Field_reader.get_size field_reader);
@@ -302,24 +346,26 @@ let seek_exact ~block_tree_terms_reader ~field_reader ~fst target =
       let suffixes = read_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes in
       List.iter (fun s -> Printf.printf "s -> %s\n" s) suffixes;
       let stat_bytes = Index_input.read_string terms_in in
-      let bytes = Index_input.read_string terms_in in
-      Printf.printf "stat_bytes:";
-      String.iter (fun c -> Printf.printf "%d, " (int_of_char c)) stat_bytes;
-      print_newline ();
-      Printf.printf "bytes: \n";
-      String.iter (fun c -> Printf.printf "%d, " (int_of_char c)) bytes;
-      print_newline ();
+      let stats_reader = String_data_input.from_string stat_bytes in
+      let postings_bytes = Index_input.read_string terms_in in
+      let postings_reader = String_data_input.from_string postings_bytes in
       let target_suffix = String.sub target prefix_length ((String.length target) - prefix_length) in
       Log.debug (fun () -> Printf.sprintf "target suffix: %s\n" target_suffix);
       Assert.check_implemented is_leaf_block "if_leaf_block = false";
-      let found_term = List.exists (fun x -> x = target_suffix) suffixes in
-      Log.debug (fun () -> Printf.sprintf "found term: %b" found_term);
-      (* fp end comes here *)
-(*      let found_term = if is_leaf_block then begin*)
-(*        List.exists (fun x -> x =*)
-
-(*      end else*)
-(*        failwith "is leaf block = false not implemented yet";*)
-      None
+      let found_term = index_of ~f:(fun x -> x = target_suffix) suffixes in
+      Log.debug (fun () -> Printf.sprintf "found term: %b" (Option.is_some found_term));
+      match found_term with
+      | None -> None
+      | Some limit ->
+      let it = Some {
+        Index_iterator.term = target;
+        prefix_length;
+        suffixes;
+        stats_reader: String_data_input.t;
+        postings_reader: String_data_input.t;
+      } in
+      let block_state = decode_metadata ~include_freqs:true ~limit ~stats_reader in
+      Printf.printf "Block state = %s" (Block_term_state.show block_state);
+      Some (it, block_state)
 
 

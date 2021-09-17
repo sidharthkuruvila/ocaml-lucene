@@ -16,6 +16,9 @@ let bit_arc_has_output = 1 lsl 4
 let bit_arc_has_final_output = 1 lsl 5
 let check_flag byte flag = byte land flag != 0
 
+let is_bit_set_int64 n b =
+  Int64.logand n (Int64.shift_left 1L b) <> 0L
+
 let output_flags_num_bits = 2
 
 let  bit_stop_node = 1 lsl 3
@@ -53,6 +56,9 @@ module Block_term_state = struct
     doc_start_fp: int;
     pos_start_fp: int;
     pay_start_fp: int;
+    singleton_doc_id: int option;
+    last_pos_block_offset: int option;
+    skip_offset: int option;
   }
 
   let init = {
@@ -62,12 +68,21 @@ module Block_term_state = struct
       doc_start_fp = 0;
       pos_start_fp = 0;
       pay_start_fp = 0;
+      singleton_doc_id = None;
+      last_pos_block_offset = None;
+      skip_offset = None;
   }
 
   let show state =
-    let { doc_freq; total_term_freq; metadata_upto; doc_start_fp; pos_start_fp; pay_start_fp } = state in
-    Printf.sprintf "BlockTermState { doc_freq: %d; total_term_freq: %d; metadata_upto: %d; doc_start_fp: %d; pos_start_fp: %d; pay_start_fp: %d }"
+    let {
+      doc_freq; total_term_freq; metadata_upto; doc_start_fp; pos_start_fp;
+      pay_start_fp; singleton_doc_id; last_pos_block_offset; skip_offset;
+    } = state in
+    Printf.sprintf "BlockTermState { doc_freq: %d; total_term_freq: %d; metadata_upto: %d; doc_start_fp: %d; pos_start_fp: %d; pay_start_fp: %d; singleton_doc_id: %d; last_pos_block_offset: %d; skip_offset: %d }"
      doc_freq total_term_freq metadata_upto doc_start_fp pos_start_fp pay_start_fp
+     (match singleton_doc_id with | None -> -1 | Some n -> n)
+     (match last_pos_block_offset with | None -> -1 | Some n -> n)
+     (match skip_offset with | None -> -1 | Some n -> n)
 
 end
 
@@ -258,7 +273,52 @@ let debug_print_suffixes ~ent_count ~suffix_bytes ~suffix_length_bytes =
        loop (n - 1) in
   loop ent_count
 
-let decode_metadata ~include_freqs ~limit ~stats_reader =
+let decode_postings_term ~field_info ~postings_reader ~term_state =
+
+  (* Implemented for posting files with version VERSION_COMPRESSED_TERMS_DICT_IDS:6 or greater *)
+  let code = String_data_input.read_vlong postings_reader in
+  let {Block_term_state.doc_freq; singleton_doc_id; pos_start_fp; pay_start_fp; doc_start_fp; _} = term_state in
+  let v = Int64.to_int (Int64.shift_right_logical code 1) in
+  Printf.printf "V = %d\n" v;
+  let has_doc_start_fp = not (is_bit_set_int64 code 0) in
+
+  let doc_start_fp = doc_start_fp + (if has_doc_start_fp then v else 0) in
+  Printf.printf "doc_start_fp = %d\n" doc_start_fp;
+  let singleton_doc_id = if has_doc_start_fp then
+    if doc_freq = 1 then Some (String_data_input.read_vint postings_reader)
+    else None
+  else
+    Option.map (fun n -> n + v) singleton_doc_id in
+  let field_has_positions = Field_infos.has_positions field_info in
+  let field_has_offsets = Field_infos.has_offsets field_info in
+  let field_has_payloads = Field_infos.has_payloads field_info in
+  let pos_start_fp = pos_start_fp + (if field_has_positions then
+    (Int64.to_int (String_data_input.read_vlong postings_reader))
+  else
+    (0)) in
+  let pay_start_fp = pay_start_fp + (if field_has_positions && (field_has_offsets || field_has_payloads) then
+    (Int64.to_int (String_data_input.read_vlong postings_reader))
+  else
+    (0)) in
+  let last_pos_block_offset = if term_state.total_term_freq > 128 then
+    Some (Int64.to_int (String_data_input.read_vlong postings_reader))
+  else
+    None in
+  let skip_offset = if term_state.doc_freq > 128 then
+    Some (Int64.to_int (String_data_input.read_vlong postings_reader))
+  else
+    None in
+  { term_state with
+    doc_freq;
+    doc_start_fp;
+    singleton_doc_id;
+    pos_start_fp;
+    pay_start_fp;
+    last_pos_block_offset;
+    skip_offset;
+  }
+
+let decode_metadata ~field_info ~limit ~stats_reader ~postings_reader=
   let rec loop ~singleton_run_length  ~term_state n =
     if n > limit then
       term_state
@@ -273,17 +333,16 @@ let decode_metadata ~include_freqs ~limit ~stats_reader =
           (singleton_run_length, 1, 1)
         else
           let doc_freq = token lsr 1 in
-          let total_term_freq = (if include_freqs then
+          let total_term_freq = (if Field_infos.has_freqs field_info then
             String_data_input.read_vint stats_reader
           else
             0) + doc_freq in
           (0, doc_freq, total_term_freq) in
-      loop ~singleton_run_length ~term_state:{term_state with Block_term_state.doc_freq; total_term_freq; metadata_upto=(n+1)} (n + 1) in
+      let term_state = {term_state with Block_term_state.doc_freq; total_term_freq; metadata_upto=(n+1)} in
+      let term_state = decode_postings_term ~field_info ~postings_reader ~term_state in
+      loop ~singleton_run_length ~term_state (n + 1) in
   let init_state = Block_term_state.init in
   loop ~singleton_run_length:0 ~term_state:init_state 0
-
-
-
 
 let seek_exact ~block_tree_terms_reader ~field_reader ~fst target =
   print_endline "seeking exact";
@@ -382,7 +441,8 @@ let seek_exact ~block_tree_terms_reader ~field_reader ~fst target =
         stats_reader: String_data_input.t;
         postings_reader: String_data_input.t;
       } in
-      let block_state = decode_metadata ~include_freqs:true ~limit ~stats_reader in
+      let field_info = field_reader.field_info in
+      let block_state = decode_metadata ~field_info ~limit ~stats_reader ~postings_reader in
 
       Printf.printf "Block state = %s" (Block_term_state.show block_state);
       Some (it, block_state)

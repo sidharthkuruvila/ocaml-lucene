@@ -23,6 +23,24 @@ module Index_options = struct
    | 3 -> DOCS_AND_FREQS_AND_POSITIONS
    | 4 -> DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS
    | _ -> failwith "Code does not match"
+
+  let has_freqs io =
+    match io with
+    | DOCS_AND_FREQS | DOCS_AND_FREQS_AND_POSITIONS | DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS ->
+      true
+    | _ -> false
+
+  let has_positions io =
+    match io with
+      | DOCS_AND_FREQS_AND_POSITIONS | DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS ->
+        true
+      | _ -> false
+
+    let has_offsets io =
+      match io with
+        | DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS ->
+          true
+        | _ -> false
 end
 
 module Doc_values_types = struct
@@ -127,3 +145,15 @@ let for_file fn =
 
 let get_field { field_infos } n =
   List.find (fun field_info -> field_info.field_number = n) field_infos
+
+
+let has_freqs { index_options; _ } =
+  Index_options.has_freqs index_options
+
+let has_positions { index_options; _ } =
+  Index_options.has_positions index_options
+
+let has_offsets { index_options; _ } =
+  Index_options.has_offsets index_options
+
+let has_payloads { store_payloads; _ } = store_payloads

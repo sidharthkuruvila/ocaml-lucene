@@ -1,7 +1,7 @@
 open Lucene_data_input
 
 type t = {
-  field_info: Field_infos.field_info;
+  field_info: Field_infos.Field_info.t;
   num_terms: int;
   root_code: string;
   sum_total_term_freq: Int64.t;

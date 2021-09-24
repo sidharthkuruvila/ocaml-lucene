@@ -55,7 +55,7 @@ let create { Segment_read_state.dir; segment_info; field_infos} =
 (*    Printf.printf "index start fp = %d\n" (Int64.to_int index_start_fp);*)
       let fst = Fst.read ~meta_in:meta_input ~index_in:index_input_clone in
       (field, {
-        Field_reader.field_info: Field_infos.field_info;
+        Field_reader.field_info: Field_infos.Field_info.t;
         num_terms;
         root_code;
         sum_total_term_freq;

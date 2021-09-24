@@ -36,11 +36,17 @@ module Index_options = struct
         true
       | _ -> false
 
-    let has_offsets io =
-      match io with
-        | DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS ->
-          true
-        | _ -> false
+  let has_offsets io =
+    match io with
+      | DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS ->
+        true
+      | _ -> false
+
+  let has_prox io =
+    match io with
+      | DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS ->
+        true
+      | _ -> false
 end
 
 module Doc_values_types = struct
@@ -63,24 +69,27 @@ module Doc_values_types = struct
     | _ -> failwith "Code does not match"
 end
 
-type field_info = {
-  name: string;
-  field_number: int;
-  store_term_vector: bool;
-  omit_norms: bool;
-  store_payloads: bool;
-  is_soft_deletes_field: bool;
-  index_options: Index_options.t;
-  doc_values_type: Doc_values_types.t;
-  doc_values_gen: Int64.t;
-  attributes: (string * string) list;
-  point_data_dimension_count: int;
-  point_index_dimension_count: int;
-  point_num_bytes: int;
-}
+
+module Field_info = struct
+  type t = {
+    name: string;
+    field_number: int;
+    store_term_vector: bool;
+    omit_norms: bool;
+    store_payloads: bool;
+    is_soft_deletes_field: bool;
+    index_options: Index_options.t;
+    doc_values_type: Doc_values_types.t;
+    doc_values_gen: Int64.t;
+    attributes: (string * string) list;
+    point_data_dimension_count: int;
+    point_index_dimension_count: int;
+    point_num_bytes: int;
+  }
+end
 
 type t = {
-  field_infos: field_info list
+  field_infos: Field_info.t list
 }
 
 let field_infos_count field_infos =
@@ -122,7 +131,7 @@ let for_file fn =
       let attributes = Index_input.read_assoc_list_of_strings di in
       let (point_data_dimension_count, point_index_dimension_count, point_num_bytes) = read_point_data version di in
       {
-        name;
+        Field_info.name;
         field_number;
         store_term_vector;
         omit_norms;
@@ -144,16 +153,16 @@ let for_file fn =
   }
 
 let get_field { field_infos } n =
-  List.find (fun field_info -> field_info.field_number = n) field_infos
+  List.find (fun field_info -> field_info.Field_info.field_number = n) field_infos
 
 
-let has_freqs { index_options; _ } =
+let has_freqs { Field_info.index_options; _ } =
   Index_options.has_freqs index_options
 
-let has_positions { index_options; _ } =
+let has_positions { Field_info.index_options; _ } =
   Index_options.has_positions index_options
 
-let has_offsets { index_options; _ } =
+let has_offsets { Field_info.index_options; _ } =
   Index_options.has_offsets index_options
 
-let has_payloads { store_payloads; _ } = store_payloads
+let has_payloads { Field_info.store_payloads; _ } = store_payloads

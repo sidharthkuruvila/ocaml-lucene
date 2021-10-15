@@ -6,32 +6,6 @@ let is_bit_set ~get_byte_at index =
   byte land (1 lsl bit_index) != 0
 
 
-let binary32 n =
-  let open Int32 in
-  let bytes = Bytes.make 32 '0' in
-  let rec loop i =
-    let c = if logand (shift_left 1l i) n = 0l then
-      '0'
-    else
-      '1' in
-    Bytes.set bytes (31 - i) c;
-    if i < 31 then loop (i + 1) in
-  loop 0;
-  Bytes.to_string bytes
-
-let binary64 n =
-  let open Int32 in
-  let bytes = Bytes.make 64 '0' in
-  let rec loop i =
-    let c = if logand (shift_left 1l i) n = 0l then
-      '0'
-    else
-      '1' in
-    Bytes.set bytes (63 - i) c;
-    if i < 31 then loop (i + 1) in
-  loop 0;
-  Bytes.to_string bytes
-
 let mask2 =  0x55
 let mask4 =  0x33
 let mask8 =  0x0F

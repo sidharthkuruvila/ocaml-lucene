@@ -1,0 +1,3 @@
+(library
+ (name lucene_bit_packing)
+ (libraries lucene_utils lucene_data_input))

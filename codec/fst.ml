@@ -1,4 +1,5 @@
 open Lucene_data_input
+open Lucene_utils
 
 let arcs_for_direct_addressing = 1 lsl 6
 let bit_last_arc = 1 lsl 1
@@ -135,7 +136,7 @@ let next_arc_using_direct_addressing label ~input =
     Printf.printf "Presence Index = %d, arc index = %d, bytes_per_arc = %d\n" presence_index arc_index bytes_per_arc;
     Reversed_index_input.set_position input (pos_arc_start - presence_index * bytes_per_arc);
     let flags = Reversed_index_input.read_byte input in
-    Printf.printf "flags = %s\n" (Bit_set_util.binary32 (Int32.of_int flags));
+    Printf.printf "flags = %s\n" (Bit_utils.binary32 (Int32.of_int flags));
     let output = if check_flag flags bit_arc_has_output then
         Reversed_index_input.read_string input
       else

@@ -44,7 +44,7 @@ module Index_options = struct
 
   let has_prox io =
     match io with
-      | DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS ->
+      | DOCS_AND_FREQS_AND_POSITIONS | DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS ->
         true
       | _ -> false
 end
@@ -86,10 +86,15 @@ module Field_info = struct
     point_index_dimension_count: int;
     point_num_bytes: int;
   }
+
+
 end
 
 type t = {
-  field_infos: Field_info.t list
+  field_infos: Field_info.t list;
+  has_prox: bool;
+  has_payloads: bool;
+  has_offsets: bool;
 }
 
 let field_infos_count field_infos =
@@ -147,12 +152,18 @@ let for_file fn =
       } :: loop (n - 1)
     end in
   let field_infos = loop size in
+  let has_prox = List.for_all (fun {Field_info.index_options; _} -> Index_options.has_prox index_options) field_infos in
+  let has_payloads = List.for_all (fun { Field_info.store_payloads; _} -> store_payloads) field_infos in
+  let has_offsets = List.for_all (fun {Field_info.index_options; _} -> Index_options.has_offsets index_options) field_infos in
   Codec_util.check_footer di;
   {
     field_infos;
+    has_prox;
+    has_payloads;
+    has_offsets;
   }
 
-let get_field { field_infos } n =
+let get_field { field_infos; _ } n =
   List.find (fun field_info -> field_info.Field_info.field_number = n) field_infos
 
 

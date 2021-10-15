@@ -8,6 +8,7 @@ type t = {
 let make_segment_file_name segment_name segment_suffix =
   Printf.sprintf "%s_Lucene84_0.%s" segment_name segment_suffix
 
+
 let create { Segment_read_state.dir; segment_info; field_infos} =
   let segment_suffix = "Lucene84_0" in
   let segment_name = segment_info.Segment_info.name in

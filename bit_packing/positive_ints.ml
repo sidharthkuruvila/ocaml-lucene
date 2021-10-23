@@ -60,6 +60,7 @@ let encode ints out =
     Data_output.write_vint out ints.(0);
     List.iter (fun (i, n) -> Data_output.write_byte out (char_of_int i); Data_output.write_byte out (char_of_int n)) exceptions
   end else begin
+    Data_output.write_byte out (char_of_int ((exception_count lsl 5) lor patched_bits_required));
 
   end
 end

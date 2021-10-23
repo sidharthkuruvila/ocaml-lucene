@@ -20,7 +20,7 @@ let binary64 n =
     else
       '1' in
     Bytes.set bytes (63 - i) c;
-    if i < 31 then loop (i + 1) in
+    if i < 63 then loop (i + 1) in
   loop 0;
   Bytes.to_string bytes
 

@@ -1,52 +1,19 @@
 # Concepts
 
-
 Frame of Reference (FOR) compression
 Patched Frame of Reference (PFOR)
 
-# Bit packing strategies
+## Parallel bit packing
 
+Consider packing a array of numbers each up to 8 bits in length. Suppose the length of the input array is a multiple of 8. The number of bytes required for the packed representation would be the length of the array multiplied by the number of bits divided by 8.
 
+Let the length of the output packed byte array be n.Take the first n numbers for the input array and write them into each byte in the output array. For smaller bit lengths this process can be repeated until there is no space to fit the numbers without overflowing. If there are numbers available, pack them into the remaining bits.
 
-## Linear packing
-A simple linear algorithm to pack positive numbers up to 32 bits in length
+The pattern can be extended to 16 and 32 bits. 
 
+This can be parallelized by using 64bit longs to process multiple arrays at the same time. For example 8 bytes can be processed in parallel. Suppose the array to be packed contains 128 numbers, each containing 8 or fewer bits. The original array can be split into 8 sub arrays containing 16 numbers. These arrays can be transformed into an array of 16 longs. The original algorithm can then be applied on each byte in the long array in parallel.
 
-Pack into byte moves bits from number_to_pack to byte_to_fill. After it runs one of three things will happen, the byte will be filled, the number_to_pack will be empty or both.
-```ocaml
-let pack_into_byte byte_to_fill bits_to_fill number_to_pack bits_to_pack =
-  let packable_bits = min bits_to_fill bits_to_pack in
-  let byte = (byte_to_fill lsl packable_bits) lor 
-    ((number_to_pack lsr (bits_to_pack - packable_bits)) land 0xFF) in
-  let remaining_number = number_to_pack land ((1 lsl packable_bits) - 1)  in
-      (byte, bits_to_fill - packable_bits, remaining_number, bits_to_pack - packable_bits)
-```
-
-```ocaml
-let pack_bits l num_size =
-  let rec pack_next_int l byte_to_fill bits_to_fill =
-    match l with
-    | n::rest -> pack rest byte_to_fill bits_to_fill n num_size
-    | [] when bits_to_fill != 8 -> [byte_to_fill] 
-    | [] -> []
-  and pack l byte_to_fill bits_to_fill num_to_pack bits_to_pack = 
-    if bits_to_pack = 0 then
-           pack_next_int l byte_to_fill bits_to_fill
-    else if bits_to_fill = 0 then
-      byte_to_fill::(pack l 0 8 num_to_pack bits_to_pack)   
-    else 
-      let (byte_to_fill, bits_to_fill, num_to_pack, bits_to_pack)
-        = pack_into_byte byte_to_fill bits_to_fill num_to_pack bits_to_pack in
-      pack l byte_to_fill bits_to_fill num_to_pack bits_to_pack in
-  pack_next_int l 0 8 
-```
-
-
-The bits will be packed in msb order.
-
-## Parallel packing
-
-
+The logic can be extended to the 16 bits with four parallel streams and 32 bits with 2 parallel streams. 
 
 https://lemire.me/blog/2012/02/08/effective-compression-using-frame-of-reference-and-delta-coding/
 

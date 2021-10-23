@@ -102,12 +102,12 @@ module Make(M : Data_input_ops) = struct
 
   let read_le_int64 di =
     let rec loop n count =
-      if count != 0 then
+      if count != 8 then
         let b = read_byte di in
-        loop (Int64.logor (Int64.shift_left n  8) (Int64.of_int b)) (count - 1)
+        loop (Int64.logor n (Int64.shift_left (Int64.of_int b) (count  * 8))) (count + 1)
       else
         n in
-    loop 0L 8
+    loop 0L 0
 
   let read_uint di =
     read_int di

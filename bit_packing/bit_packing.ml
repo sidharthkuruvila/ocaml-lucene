@@ -141,10 +141,8 @@ let unpack_longs_n bits_per_num l =
 
   *)
 let pack l num_size =
-  Printf.printf "l: %s\n" (String.concat ", " (List.map string_of_int l));
   let item_count = List.length l in
   let pack_n l width masks =
-    Printf.printf "l: %s\n" (String.concat ", " (List.map Int64.to_string l));
     let encoded_length = (item_count*num_size)/64 in
     let encoded = zeros encoded_length in
     let shift = width - num_size in
@@ -168,7 +166,6 @@ let pack l num_size =
   if num_size <= 8 then
     let width = 8 in
     let l = pack_longs_n 8 l in
-    Printf.printf "packed longs:\n %s\n\n" (String.concat "\n" (List.map binary64 l));
     let masks = masks8 in
     pack_n l width masks
   else if num_size <= 16 then
@@ -185,7 +182,6 @@ let pack l num_size =
     failwith "Pack support bit counds less than 32"
 
 let unpack l num_size =
-  Printf.printf "List to unpack:\n %s\n\n" (String.concat "\n" (List.map binary64 l));
   let unpack_n width masks =
       let mask = masks (num_size - 1) in
       let shift_count = width / num_size in
@@ -193,14 +189,11 @@ let unpack l num_size =
       let nums = List.concat_map (fun shift ->
         List.map (fun n ->
           Int64.logand (Int64.shift_right_logical n  shift) mask) l) shifts in
-      Printf.printf "Nums:\n %s\n\n" (String.concat "\n" (List.map binary64 nums));
       let extra = width mod num_size in
-      Printf.printf "repack:\n %s\n\n" (String.concat "\n" (List.map binary64 (repack_bits l masks extra num_size)));
       let packed_nums = if extra = 0 then
         nums
       else
         List.concat [nums; repack_bits l masks extra num_size ] in
-      Printf.printf "Packed Nums:\n %s\n\n" (String.concat "\n" (List.map binary64 packed_nums));
       unpack_longs_n width packed_nums in
   if num_size <= 8 then
     let width = 8 in
@@ -223,7 +216,7 @@ end
 
 module Decode(Data_input: Data_input.S) = struct
   let decode num_size di =
-    let len = 2 * num_size in
+    let len = 2*num_size in
     let l = List.init len (fun _ -> Data_input.read_le_int64 di) in
     unpack l num_size
 end

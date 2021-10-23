@@ -1,17 +1,6 @@
 open Lucene_utils
 open Lucene_data_input
 
-let msb n =
-  let rec loop i n c =
-    if i = 0 then
-      c
-    else
-      let (n, c) = if n > 1 lsl i
-      then (n lsr i, c + i)
-      else (n, c) in
-      loop (i / 2) n c in
-  loop 32 n 0
-
 let top8_items arr =
   let l = [-1;-1;-1;-1;-1;-1;-1;-1] in
   let rec loop n l =

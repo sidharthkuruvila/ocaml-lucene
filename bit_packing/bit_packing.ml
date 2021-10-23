@@ -84,9 +84,6 @@ let unpack_long bits l =
 let unpack_longs_n bits_per_num l =
   List.concat (List_utils.zip_l (List.map (unpack_long bits_per_num) l))
 
-
-
-
 (* Encode a list of numbers each using max num_size bits.
 
   *)
@@ -156,13 +153,11 @@ let unpack l num_size =
   else
     failwith "Not implemented yet"
 
-
 module Encode(Data_output: Data_output.S) = struct
   let encode l num_size out =
     let ol = pack l num_size in
     List.iter (Data_output.write_le_int64 out) ol
 end
-
 
 module Decode(Data_input: Data_input.S) = struct
   let decode num_size di =
@@ -170,11 +165,3 @@ module Decode(Data_input: Data_input.S) = struct
     let l = List.init len (fun _ -> Data_input.read_le_int64 di) in
     unpack l num_size
 end
-
-(*(* Decode a list of bit packed numbers 8 bit numbers.*)
-(*  The output will be unpacked into num_size ints.*)
-(*  *)*)
-(*let decode l num_size = repack_bits l 8 num_size*)
-
-
-

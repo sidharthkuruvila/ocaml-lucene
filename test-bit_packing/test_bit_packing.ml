@@ -1,22 +1,6 @@
 open Lucene_bit_packing
 open Lucene_data_input
-
-let binary64 n =
-  let open Int64 in
-  let bytes = Bytes.make 64 '0' in
-  let rec loop i =
-    let c = if logand (shift_left 1L i) n = 0L then
-      '0'
-    else
-      '1' in
-    Bytes.set bytes (63 - i) c;
-    if i < 63 then loop (i + 1) in
-  loop 0;
-  Bytes.to_string bytes
-
-let rec fill n v =
-  if n = 0 then []
-  else v::(fill (n - 1) v)
+open Lucene_utils
 
 let test_patching_unpatching_lists () =
   let inputs = [
@@ -29,7 +13,7 @@ let test_patching_unpatching_lists () =
     0;0;0;0;0;0;0;0;
     0;0;0;0;0;0;0;0;], 2;
    List.concat [[0b11111111111; 0b11111111111; 0b11111111111; 0b11111111111;
-   0b11111111111; 0b11111111111; 0b11111111111; 0b11111111111]; fill 120 0 ] , 11]
+   0b11111111111; 0b11111111111; 0b11111111111; 0b11111111111]; List_utils.fill 120 0 ] , 11]
   in
   List.iter (fun (l, bit_count) ->
     let encoded = Bit_packing.pack l bit_count in
@@ -42,9 +26,9 @@ let test_encoding_decoding_lists () =
   let module Encode = Bit_packing.Encode(Buffer_data_output) in
     let inputs = [
      List.concat [[2;0;0;0;3;3;3;3;];
-      fill 120 0], 2;
+      List_utils.fill 120 0], 2;
      List.concat [[0b11111111111; 0b11111111111; 0b11111111111; 0b11111111111;
-     0b11111111111; 0b11111111111; 0b11111111111; 0b11111111111]; fill 120 0 ] , 11
+     0b11111111111; 0b11111111111; 0b11111111111; 0b11111111111]; List_utils.fill 120 0 ] , 11
      ]
     in
   List.iter (fun (l, bit_count) ->

@@ -1,14 +1,6 @@
 open Lucene_utils
 open Lucene_data_input
 
-let rec fill n v =
-  if n = 0 then []
-  else v::(fill (n - 1) v)
-
-module type S = sig
-  type data_output_t
-  val encode: int array -> data_output_t -> unit
-end
 let msb n =
   let rec loop i n c =
     if i = 0 then
@@ -29,15 +21,6 @@ let top8_items arr =
       loop (n - 1) (List.tl (List.sort (-) (n::l))) in
   loop 0 l
 
-
-let rec last l =
-  match l with
-  | [] -> failwith "Last expects at least one item in the list"
-  | [x] -> x
-  | _::rest -> last rest
-
-
-
 module Encode(Data_output: Data_output.S) = struct
   module Encode = Bit_packing.Encode(Data_output)
   let encode ints out = begin
@@ -51,7 +34,7 @@ module Encode(Data_output: Data_output.S) = struct
        The first step is to calculate the patched bits required, which is
        the number of bits left after the prefixes have been removed.
     *)
-    let max_bits_required = Bit_utils.msb (last top8) in
+    let max_bits_required = Bit_utils.msb (List_utils.last top8) in
     let patched_bits_required = max (Bit_utils.msb (List.hd top8)) (max_bits_required - 8) in
     let max_unpatched_value = (1 lsl patched_bits_required) - 1 in
     let exception_count = List.fold_left (fun a n -> if n > max_unpatched_value then a + 1 else a) 0 top8 in
@@ -78,7 +61,7 @@ module Decode(Data_input: Data_input.S) = struct
     let bits_per_value = token land 0x1f in
     let num_exception = token lsr 5 in
     let cropped_ints = if bits_per_value = 0 then
-      fill 128 (Data_input.read_vint din)
+      List_utils.fill 128 (Data_input.read_vint din)
     else
       Bit_packing.decode bits_per_value din in
     let ints = Array.of_list cropped_ints in

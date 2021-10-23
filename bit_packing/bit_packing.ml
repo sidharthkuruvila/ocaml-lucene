@@ -1,41 +1,5 @@
 open Lucene_data_input
-
-
-let binary64 n =
-  let open Int64 in
-  let bytes = Bytes.make 64 '0' in
-  let rec loop i =
-    let c = if logand (shift_left 1L i) n = 0L then
-      '0'
-    else
-      '1' in
-    Bytes.set bytes (63 - i) c;
-    if i < 63 then loop (i + 1) in
-  loop 0;
-  Bytes.to_string bytes
-
-let grouped group_size l  =
-  let rec loop l fill lol n =
-    match l with
-    | [] -> List.rev ((List.rev fill) :: lol)
-    | _ when n = 0 ->
-        loop l [] ((List.rev fill)::lol) group_size
-    | x::rest ->
-        loop rest (x::fill) lol (n - 1) in
-  loop l [] [] group_size
-
-let zip_l l =
-  let rec firsts l fs rs=
-    match l with
-    | [] -> Some (List.rev fs, List.rev rs)
-    | (f::r)::rest -> firsts rest (f::fs) (r::rs)
-    | _ -> None in
-  let rec loop l =
-    match firsts l [] [] with
-    | None -> []
-    | Some(row, rest) -> row::(loop rest) in
-  loop l
-
+open Lucene_utils
 
 let make_masks width =
   let rec make_init parts acc =
@@ -55,20 +19,6 @@ let make_masks width =
 let masks8 = make_masks 8
 let masks16 = make_masks 16
 let masks32 = make_masks 32
-
-let rec take_n l n =
-  if n = 0 then
-    ([], l)
-  else
-    match l with
-    | x::rest ->
-      let (l1, l2) = take_n rest (n - 1) in
-      (x::l1, l2)
-    | _ -> failwith "taken expects at least n items"
-
-let rec fill n v =
-  if n = 0 then []
-  else v::(fill (n - 1) v)
 
 let rec zeros n =
   if n = 0 then []
@@ -110,7 +60,7 @@ let pack_longs_n bits_per_num l =
   let len = List.length l in
   assert (len * bits_per_num mod 64 = 0);
   let longs_len = len * bits_per_num / 64 in
-  let l = l |> grouped longs_len |> zip_l in
+  let l = l |> List_utils.grouped longs_len |> List_utils.zip_l in
   List.map (pack_long bits_per_num) l
   (*let rec loop l =
     match l with
@@ -132,7 +82,7 @@ let unpack_long bits l =
   loop ((num_count - 1) * bits)
 
 let unpack_longs_n bits_per_num l =
-  List.concat (zip_l (List.map (unpack_long bits_per_num) l))
+  List.concat (List_utils.zip_l (List.map (unpack_long bits_per_num) l))
 
 
 
@@ -150,7 +100,7 @@ let pack l num_size =
       if shift < 0 then
         (encoded, shift + num_size, l)
       else begin
-        let (l, rest) = take_n l encoded_length in
+        let (l, rest) = List_utils.take_n l encoded_length in
         let encoded = List.map2 (fun e n ->
           let open Int64 in
           logor e (shift_left n shift)

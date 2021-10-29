@@ -1,6 +1,9 @@
 open Lucene_utils
 open Lucene_data_input
 
+let check_all_equal arr =
+  Array.for_all (fun n -> arr.(0) = n) arr
+
 let top8_items arr =
   let l = [-1;-1;-1;-1;-1;-1;-1;-1] in
   let rec loop n l =
@@ -30,8 +33,7 @@ module Encode(Data_output: Data_output.S) = struct
     let exceptions = (Array.to_list ints) |> List.mapi (fun i a -> (i, a)) |> List.filter_map  (fun (i, a) ->
       if a > max_unpatched_value then Some(i, a land max_unpatched_value) else None) in
     let cropped_ints = Array.map (fun n -> n land max_unpatched_value) ints in
-    let all_equal = Array.for_all (fun n -> cropped_ints.(0) = n) cropped_ints in
-    if max_bits_required <= 8 && all_equal then begin
+    if max_bits_required <= 8 && check_all_equal cropped_ints then begin
       Data_output.write_byte out (char_of_int (exception_count lsl 5));
       Data_output.write_vint out ints.(0);
       List.iter (fun (i, n) -> Data_output.write_byte out (char_of_int i); Data_output.write_byte out (char_of_int n)) exceptions

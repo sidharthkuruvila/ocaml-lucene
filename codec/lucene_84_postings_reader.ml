@@ -1,4 +1,4 @@
-open Lucene_data_input
+  open Lucene_data_input
 
 
 let terms_codec = "Lucene84PostingsWriterTerms"

@@ -22,10 +22,6 @@ This can be parallelized by using 64bit longs to process multiple arrays at the 
 
 The logic can be extended to the 16 bits with four parallel streams and 32 bits with 2 parallel streams. 
 
-https://lemire.me/blog/2012/02/08/effective-compression-using-frame-of-reference-and-delta-coding/
-
-https://fulmicoton.com/posts/bitpacking/
-
 # Patching
 
 The numbers are processed in batches of 128
@@ -41,3 +37,9 @@ There is a special case when the numbers are at most 8 bits long and they are al
 When not applying the special case. The ints after removing the prefixes are stored using the bit packing algorithm. the results of the algorithm are written as little endian longs.
 
 Finally the exceptions are written 1 byte for the index and one byte for the prefix.
+
+## Resources
+* [A discussion on the ocaml list about vectorization for the stringaf library](https://discuss.ocaml.org/t/some-simd-in-your-ocaml/6367)
+* [How auto vectorization works in java](http://daniel-strecker.com/blog/2020-01-14_auto_vectorization_in_java/)
+* [A description of the bit packing scheme used in tantivy, Lucene's is based on this](https://fulmicoton.com/posts/bitpacking/)
+* https://lemire.me/blog/2012/02/08/effective-compression-using-frame-of-reference-and-delta-coding/

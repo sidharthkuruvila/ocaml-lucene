@@ -17,6 +17,12 @@ let _ =
     (*List.iter (fun (_, fi) -> print_endline fi.Field_reader.field_info.name) field_readers;*)
     let (_, field_reader, fst) = find_field "title" ~field_readers in
     print_endline "in hee";
-    ignore (Terms_enumerator.seek_exact ~block_tree_terms_reader ~field_reader ~fst "abc")
+    let res = Terms_enumerator.seek_exact ~block_tree_terms_reader ~field_reader ~fst "abc" in
+    match res with
+    | None -> failwith "Failed to match!"
+    | Some (it, block_state) -> begin
+      Printf.printf "Iterator = %s\n" @@ Terms_enumerator.Index_iterator.show @@ Option.get it;
+      Printf.printf "Block state = %s\n" @@ Terms_enumerator.Block_term_state.show block_state;
+    end
   ) segments.segments
 

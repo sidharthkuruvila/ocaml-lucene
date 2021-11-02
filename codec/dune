@@ -1,3 +1,4 @@
 (library
  (name lucene_codec)
- (libraries unix lucene_data_input lucene_utils))
+ (libraries unix lucene_data_input lucene_utils)
+ (preprocess (pps ppx_deriving.show)))

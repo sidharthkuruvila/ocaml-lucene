@@ -29,7 +29,7 @@ module Block_term_state = struct
     singleton_doc_id: int option;
     last_pos_block_offset: int option;
     skip_offset: int option;
-  }
+  } [@@deriving show]
 
   let init = {
       doc_freq = 0;
@@ -43,16 +43,16 @@ module Block_term_state = struct
       skip_offset = None;
   }
 
-  let show state =
-    let {
-      doc_freq; total_term_freq; metadata_upto; doc_start_fp; pos_start_fp;
-      pay_start_fp; singleton_doc_id; last_pos_block_offset; skip_offset;
-    } = state in
-    Printf.sprintf "BlockTermState { doc_freq: %d; total_term_freq: %d; metadata_upto: %d; doc_start_fp: %d; pos_start_fp: %d; pay_start_fp: %d; singleton_doc_id: %d; last_pos_block_offset: %d; skip_offset: %d }"
-     doc_freq total_term_freq metadata_upto doc_start_fp pos_start_fp pay_start_fp
-     (match singleton_doc_id with | None -> -1 | Some n -> n)
-     (match last_pos_block_offset with | None -> -1 | Some n -> n)
-     (match skip_offset with | None -> -1 | Some n -> n)
+(*  let show state =*)
+(*    let {*)
+(*      doc_freq; total_term_freq; metadata_upto; doc_start_fp; pos_start_fp;*)
+(*      pay_start_fp; singleton_doc_id; last_pos_block_offset; skip_offset;*)
+(*    } = state in*)
+(*    Printf.sprintf "BlockTermState { doc_freq: %d; total_term_freq: %d; metadata_upto: %d; doc_start_fp: %d; pos_start_fp: %d; pay_start_fp: %d; singleton_doc_id: %d; last_pos_block_offset: %d; skip_offset: %d }"*)
+(*     doc_freq total_term_freq metadata_upto doc_start_fp pos_start_fp pay_start_fp*)
+(*     (match singleton_doc_id with | None -> -1 | Some n -> n)*)
+(*     (match last_pos_block_offset with | None -> -1 | Some n -> n)*)
+(*     (match skip_offset with | None -> -1 | Some n -> n)*)
 
 end
 
@@ -61,9 +61,9 @@ module Index_iterator = struct
     term: string;
     prefix_length: int;
     suffixes: string list;
-    stats_reader: String_data_input.t;
-    postings_reader: String_data_input.t;
-  }
+    stats_reader: String_data_input.t [@opaque];
+    postings_reader: String_data_input.t [@opaque];
+  } [@@deriving show]
 end
 
 
@@ -274,8 +274,6 @@ let seek_exact ~block_tree_terms_reader ~field_reader ~fst target =
       } in
       let field_info = field_reader.field_info in
       let block_state = decode_metadata ~field_info ~limit ~stats_reader ~postings_reader in
-
-      Printf.printf "Block state = %s" (Block_term_state.show block_state);
       Some (it, block_state)
 
 

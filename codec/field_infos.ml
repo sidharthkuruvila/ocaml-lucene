@@ -113,9 +113,7 @@ let read_point_data version di =
   else
     (point_data_dimension_count, point_data_dimension_count, 0)
 
-let for_file fn =
-  let f = Unix.openfile fn [Unix.O_RDONLY] 0 in
-  let di = Index_input.from_fd f in
+let for_data_input di =
   let index_header = Codec_util.read_header di in
   let version = index_header.version in
   let size = Index_input.read_vint di in
@@ -162,6 +160,11 @@ let for_file fn =
     has_payloads;
     has_offsets;
   }
+
+let read dir prefix =
+    let filename = Printf.sprintf "%s.fnm" prefix in
+    Directory.open_input_with ~f:for_data_input dir filename
+
 
 let get_field { field_infos; _ } n =
   List.find (fun field_info -> field_info.Field_info.field_number = n) field_infos

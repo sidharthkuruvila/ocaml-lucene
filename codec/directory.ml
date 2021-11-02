@@ -2,10 +2,6 @@ open Lucene_data_input
 
 type t = string
 
-let get_segment_file dir =
-  let files = Array.to_list(Sys.readdir dir) in
-  List.find (fun s -> String.length s >= 8 && String.sub s 0 8 = "segments") files
-
 let open_input dir name =
   let fn = Printf.sprintf "%s/%s" dir name in
   let f = Unix.openfile fn [Unix.O_RDONLY] 0 in
@@ -22,4 +18,3 @@ let open_input_with ~f dir name =
      close ();
      res
    with exn -> close (); raise exn
-

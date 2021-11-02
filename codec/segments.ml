@@ -16,6 +16,7 @@ module Segment = struct
     field_infos_files: string list;
     doc_values_updates_files: (int * string list) list;
   }
+
 end
 
 type t = {
@@ -29,6 +30,16 @@ type t = {
   user_data: (string * string) list;
 }
 
+let display segments =
+  let lucene_version = segments.lucene_version in
+  let version = segments.version in
+  let counter = segments.name_counter in
+  let size = segments.seg_count in
+  let ms_lucene_version = segments.ms_lucene_version in
+  Printf.printf "major: %d; minor: %d; bugfix: %d\n"  lucene_version.major lucene_version.minor lucene_version.bugfix;
+  Printf.printf "version: %s; counter: %s; size: %d\n" (Int64.to_string version) (Int64.to_string counter) size;
+  Printf.printf "MS - major: %d; minor: %d; bugfix: %d\n"  ms_lucene_version.major ms_lucene_version.minor ms_lucene_version.bugfix
+
 let read_doc_values_updates_files di =
   let count = Index_input.read_int di in
   let rec loop n =
@@ -40,9 +51,7 @@ let read_doc_values_updates_files di =
       (key, value) :: loop (n - 1) in
   loop count
 
-let for_file fn =
-  let f = Unix.openfile fn [Unix.O_RDONLY] 0 in
-  let di = Index_input.from_fd f in
+let for_data_input di =
   let _ = Codec_util.read_header di in
   let lucene_version = Codec_util.read_lucene_version di in
   let index_created_major_version = Index_input.read_vint di in
@@ -52,7 +61,6 @@ let for_file fn =
   let ms_lucene_version = Codec_util.read_lucene_version di in
   let read_segments _ =
     let seg_name = Index_input.read_string di in
-    print_endline seg_name;
     let seg_id = Index_input.read_bytes di Codec_util.id_length in
     let seg_codec = Index_input.read_string di in
     let del_gen = Index_input.read_long di in
@@ -93,3 +101,15 @@ let for_file fn =
     segments;
     user_data;
   }
+
+
+let get_segment_file dir =
+  let files = Array.to_list(Sys.readdir dir) in
+  List.find (fun s -> String.length s >= 8 && String.sub s 0 8 = "segments") files
+
+(** Find the most recent "segments" file in the
+  directory. There can be more than one if lucene is
+  updating the index at the moment *)
+
+let latest dir =
+  Directory.open_input_with ~f:for_data_input dir (get_segment_file dir)

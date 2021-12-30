@@ -20,9 +20,13 @@ let test_transition () =
 let test_state_output () =
   let transducer = Fst.make 'a' 'z' in
   let (state, transducer) = Fst.create_state transducer in
-  let transducer = Fst.set_state_output transducer state ["abc"] in
-  Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output transducer state) @@ ["abc"]
+  let transducer = Fst.set_state_output transducer state (Fst.String_set.singleton "abc") in
+  Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output transducer state |> Fst.String_set.to_seq |> List.of_seq) @@ ["abc"]
 
+let test_gen_min_fst () =
+  let items = ["cat", "bat"; "car", "bat"; "dog", "bat"] in
+  let (start_state, transducer) = Fst.create_minimal_transducer 'a' 'z' items in
+  Fst.print_transducer transducer start_state "out.dot"
 
 (*
 let int_range s e =
@@ -57,6 +61,7 @@ let tests = [
   "final and set_final should return and update the final flag for a state", `Quick, test_final;
   "Setting a transition should allow it to be returned", `Quick, test_transition;
   "Setting a state_outpu should allow it to be returned", `Quick, test_state_output;
+  "Create a minimum fst", `Quick, test_gen_min_fst;
   (*"zig_zag_decode_int should return un zig zagged ints", `Quick, test_zig_zag_decode_int;
   "msb should return the index of the most significant bit", `Quick, test_msb;*)
 ]

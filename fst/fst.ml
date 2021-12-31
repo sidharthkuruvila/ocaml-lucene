@@ -47,6 +47,14 @@ let st (_, state) = state
 
 let (let*) = bind
 
+let cond pred ~if_true ~if_false =
+  let* b = pred in
+  if b then
+    if_true ()
+  else
+    if_false ()
+
+
 (*
 Create a new state in the transducer.
 This is done by adding empty items in the transitions, state_outputs and outputs maps
@@ -301,25 +309,26 @@ let create_minimal_transducer first_char last_char items =
          let* _ = set_final temp_states.(String.length current_word) true in
          set_state_output temp_states.(String.length current_word) (String_set.singleton "")
        else return () in
-     let rec loop i current_output transducer = begin
+     let rec loop i current_output = begin
        if i = String.length current_word then
-         ((), transducer)
+         return ()
        else
          let current_ch = String.get current_word i in
          let current_state = temp_states.(i) in
-         let common_prefix = longest_common_prefix (output_str temp_states.(i) current_ch transducer |> value) current_output in
-         let word_suffix = remainder common_prefix (output_str temp_states.(i) current_ch transducer |> value) in
-         let transducer = set_output temp_states.(i) current_ch common_prefix transducer |> st in
-         let transducer = List.fold_left (fun transducer (ch, next_state) ->
-           set_output next_state ch (concat word_suffix (output_str next_state ch transducer |> value)) transducer |> st
-         ) transducer (transitions current_state transducer |> value) in
-         let transducer = if final temp_states.(i) transducer |> value then
-           let strings = state_output temp_states.(i) transducer |> value in
+         let* existing_output = output_str temp_states.(i) current_ch in
+         let common_prefix = longest_common_prefix existing_output current_output in
+         let word_suffix = remainder common_prefix existing_output in
+         let* _  = set_output temp_states.(i) current_ch common_prefix in
+         let* _ = (fun transducer -> List.fold_left (fun (_, transducer) (ch, next_state) ->
+           set_output next_state ch (concat word_suffix (output_str next_state ch transducer |> value)) transducer
+         ) ((), transducer) (transitions current_state transducer |> value)) in
+         let* _ = cond (final temp_states.(i)) ~if_true:(fun () ->
+           let* strings = state_output temp_states.(i) in
            let updated_strings = String_set.map (fun s -> concat word_suffix s) strings in
-           set_state_output temp_states.(i) updated_strings transducer |> st
-         else transducer in
+           set_state_output temp_states.(i) updated_strings
+         ) ~if_false:(fun () -> return ()) in
          let current_output = remainder common_prefix current_output in
-         loop (i + 1) current_output transducer end in
+         loop (i + 1) current_output end in
        let* _  = loop 0 current_output in
        return current_word in
   let (current_word, transducer) = List.fold_left (fun (previous_word, transducer) (current_word, current_output) -> add_to_transducer previous_word (current_word, current_output) transducer) (previous_word, transducer) items in

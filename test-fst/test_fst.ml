@@ -4,24 +4,24 @@ open Lucene_fst
 let test_final () =
   let transducer = Fst.make 'a' 'z' in
   let (state, transducer) = Fst.create_state transducer in
-  Alcotest.(check bool) "Final state should be false" (Fst.final transducer state) false;
-  let transducer = Fst.set_final transducer state true in
-  Alcotest.(check bool) "Final state should be true" (Fst.final transducer state) true;
-  let transducer = Fst.set_final transducer state false in
-  Alcotest.(check bool) "Final state should be true" (Fst.final transducer state) false
+  Alcotest.(check bool) "Final state should be false" (Fst.final state transducer |> Fst.value) false;
+  let transducer = Fst.set_final state true transducer |> Fst.st in
+  Alcotest.(check bool) "Final state should be true" (Fst.final state transducer|> Fst.value) true;
+  let transducer = Fst.set_final state false transducer |> Fst.st in
+  Alcotest.(check bool) "Final state should be true" (Fst.final state transducer|> Fst.value) false
 
 let test_transition () =
   let transducer = Fst.make 'a' 'z' in
   let (state1, transducer) = Fst.create_state transducer in
   let (state2, transducer) = Fst.create_state transducer in
-  let transducer = Fst.set_transition transducer state1 'a' state2 in
-  Alcotest.(check (option int)) "transition should return the transition state"  (Fst.transition transducer state1 'a') @@ Some state2
+  let transducer = Fst.set_transition state1 'a' state2 transducer |> Fst.st in
+  Alcotest.(check (option int)) "transition should return the transition state"  (Fst.transition state1 'a' transducer |> Fst.value) @@ Some state2
 
 let test_state_output () =
   let transducer = Fst.make 'a' 'z' in
   let (state, transducer) = Fst.create_state transducer in
-  let transducer = Fst.set_state_output transducer state (Fst.String_set.singleton "abc") in
-  Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output transducer state |> Fst.String_set.to_seq |> List.of_seq) @@ ["abc"]
+  let transducer = Fst.set_state_output state (Fst.String_set.singleton "abc") transducer |> Fst.st in
+  Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output state transducer |> Fst.value |> Fst.String_set.to_seq |> List.of_seq) @@ ["abc"]
 
 let test_gen_min_fst () =
 (*  let items = ["ca", "bat"; "cat", "bat"; "car", "bat";  "co", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in*)

@@ -24,7 +24,8 @@ let test_state_output () =
   Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output transducer state |> Fst.String_set.to_seq |> List.of_seq) @@ ["abc"]
 
 let test_gen_min_fst () =
-  let items = ["cat", "bat"; "catamaran", "bat"; "car", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in
+(*  let items = ["ca", "bat"; "cat", "bat"; "car", "bat";  "co", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in*)
+  let items = ["car", "bat"; "cat", "bat"; "casamaran", "bat"; "car", "bat"; "cog", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in
   let (start_state, transducer) = Fst.create_minimal_transducer 'a' 'z' items in
   Fst.print_transducer transducer start_state "out.dot"
 
@@ -34,6 +35,11 @@ let test_remainder () =
     let result = Fst.remainder s1 s2 in
     Alcotest.(check string) "Remainder should be a suffix of the second input" result expected) inputs
 
+let test_prefix_length () =
+  let inputs = ["", "", 0; "ab", "abc", 2; "abc", "ab", 2; "ca", "co", 1] in
+  List.iter (fun (s1, s2, expected) ->
+    let result = Fst.common_prefix_length s1 s2 in
+    Alcotest.(check int) "Prefix length should be correct" result expected) inputs
 (*
 let int_range s e =
   List.of_seq (Seq.unfold (fun n -> if n = e then None else Some (n, n + 1)) s)
@@ -69,6 +75,7 @@ let tests = [
   "Setting a state_outpu should allow it to be returned", `Quick, test_state_output;
   "Create a minimum fst", `Quick, test_gen_min_fst;
   "Create remainder", `Quick, test_remainder;
+  "Find longest common prefix", `Quick, test_prefix_length;
   (*"zig_zag_decode_int should return un zig zagged ints", `Quick, test_zig_zag_decode_int;
   "msb should return the index of the most significant bit", `Quick, test_msb;*)
 ]

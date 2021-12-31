@@ -34,6 +34,8 @@ let make first_char last_char =
     dictionary = [];
   }
 
+let show_dictionary { dictionary; _} = (String.concat ", " (List.map (fun n -> Printf.sprintf "%d" n) dictionary))
+
 (*
 Create a new state in the transducer.
 This is done by adding empty items in the transitions, state_outputs and outputs maps
@@ -108,15 +110,17 @@ let set_output transducer state char output =
 let copy_state transducer state =
   let {
     next_state;
+    final_states;
     transitions;
     state_outputs;
     outputs;
     _
   } = transducer in
+  let final_states = if final transducer state then Int_set.add next_state final_states else final_states in
   let transitions = Int_map.add next_state (Int_map.find state transitions) transitions in
   let state_outputs = Int_map.add next_state (Int_map.find state state_outputs) state_outputs in
   let outputs = Int_map.add next_state (Int_map.find state outputs) outputs in
-  (next_state, { transducer with next_state = next_state + 1; transitions; state_outputs; outputs })
+  (next_state, { transducer with next_state = next_state + 1; transitions; state_outputs; outputs; final_states })
 
 let clear_state transducer state =
   let {
@@ -193,7 +197,8 @@ let print_transducer transducer state filename =
     let transitions = Int_map.find state transducer.transitions  in
     let outputs = Int_map.find state transducer.outputs in
     let labels = transitions |> Char_map.bindings |> List.map fst in
-    Printf.fprintf oc "%s [label = \"%d\"]\n" (state_id state) state;
+    let node_shape = if final transducer state then "doublecircle" else "circle" in
+    Printf.fprintf oc "%s [label = \"%d\" shape = \"%s\"]\n" (state_id state) state node_shape;
     List.iter (fun label ->
         let to_state = Char_map.find label transitions in
         let arc_output = Char_map.find label outputs in
@@ -213,13 +218,14 @@ let print_transducer transducer state filename =
     let (copy, transducer) = copy_state transducer state in
     let transducer = insert transducer copy in
     (copy, transducer)
-   | Some state -> (state, transducer)
+   | Some state ->
+      (state, transducer)
 
 
 let common_prefix_length s1 s2 =
  let n = Int.min (String.length s1) (String.length s2) in
  let rec loop i =
-   if i = n || not (Char.equal (String.get s1 i) (String.get s1 i)) then n
+   if i = n || not (Char.equal (String.get s1 i) (String.get s2 i)) then i
    else loop (i + 1) in
  loop 0
 

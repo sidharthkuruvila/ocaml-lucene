@@ -188,11 +188,12 @@ let insert transducer state =
 let print_transducer transducer state filename =
   let oc = open_out filename in
   let state_id state = Printf.sprintf "state_%d" state in
+  Printf.fprintf oc "digraph {";
   let rec loop state =
     let transitions = Int_map.find state transducer.transitions  in
     let outputs = Int_map.find state transducer.outputs in
     let labels = transitions |> Char_map.bindings |> List.map fst in
-    Printf.fprintf oc "%s [label = \"%d\"]" (state_id state) state;
+    Printf.fprintf oc "%s [label = \"%d\"]\n" (state_id state) state;
     List.iter (fun label ->
         let to_state = Char_map.find label transitions in
         let arc_output = Char_map.find label outputs in
@@ -200,6 +201,7 @@ let print_transducer transducer state filename =
         loop to_state
         ) labels in
   loop state;
+  Printf.fprintf oc "}";
   close_out oc
 
 
@@ -237,9 +239,35 @@ let longest_common_prefix s1 s2 =
 once the common prefix is removed *)
 let remainder s1 s2 =
   let l = common_prefix_length s1 s2 in
-  String.sub s2 (l - 1) (String.length s2 - l)
+  String.sub s2 l (String.length s2 - l)
 
 let concat s1 s2 = s1 ^ s2
+
+let minimize_suffix transducer temp_states word prefix_length =
+  let rec loop transducer i =
+    if i = prefix_length - 1 then
+      transducer
+    else
+      let ch = String.get word i in
+      let next_state = temp_states.(i+1) in
+      let prev_state = temp_states.(i) in
+      let min_state, transducer = find_minimized transducer next_state in
+      let transducer = set_transition transducer prev_state ch min_state in
+      loop transducer (i - 1) in
+ loop transducer (String.length word - 1)
+
+let initialize_tail_states transducer temp_states word prefix_length =
+  let rec loop transducer i =
+    if i = String.length word then
+      transducer
+    else
+      let ch = String.get word i in
+      let prev_state = temp_states.(i) in
+      let next_state = temp_states.(i+1) in
+      let transducer = clear_state transducer next_state in
+      let transducer = set_transition transducer prev_state ch next_state in
+      loop transducer (i + 1) in
+  loop transducer prefix_length
 
 let create_minimal_transducer first_char last_char items =
   let max_width = List.fold_left (fun current_max (word, _) -> Int.max current_max (String.length word)) 0 items in
@@ -251,35 +279,15 @@ let create_minimal_transducer first_char last_char items =
   let add_to_transducer (previous_word, transducer) (current_word, current_output) =
     let prefix_length = common_prefix_length previous_word current_word in
     (* Minimise the suffix of the previous word *)
-     let rec loop transducer i =
-       if i = prefix_length - 1 then
-         transducer
-       else begin
-         Printf.printf "current_word: %s, previous_word: %s i: %d\n" current_word previous_word i;
-         let ch = String.get previous_word i in
-         let next_state = temp_states.(i+1) in
-         let prev_state = temp_states.(i) in
-         let min_state, transducer = find_minimized transducer next_state in
-         let transducer = set_transition transducer prev_state ch min_state in
-         loop transducer (i - 1) end in
-     let transducer = loop transducer (String.length previous_word - 1) in
+     let transducer = minimize_suffix transducer temp_states previous_word prefix_length in
      (* Initialize tail states for current word *)
-     let rec loop transducer i =
-       if i = String.length current_word - 1 then
-         transducer
-       else
-         let ch = String.get current_word i in
-         let prev_state = temp_states.(i) in
-         let next_state = temp_states.(i+1) in
-         let transducer = clear_state transducer next_state in
-         let transducer = set_transition transducer prev_state ch next_state in
-         loop transducer (i + 1) in
+     let transducer = initialize_tail_states transducer temp_states current_word prefix_length in
+     (* Set last char transition of current word as final *)
      let transducer = if not (String.equal current_word previous_word) then
        let transducer = set_final transducer temp_states.(String.length current_word) true in
        let transducer = set_state_output transducer temp_states.(String.length current_word) (String_set.singleton "") in
        transducer
      else transducer in
-     let transducer = loop transducer (prefix_length - 2) in
      let rec loop transducer i current_output = begin
        if i = String.length current_word then
          transducer

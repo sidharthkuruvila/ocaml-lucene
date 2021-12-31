@@ -24,9 +24,15 @@ let test_state_output () =
   Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output transducer state |> Fst.String_set.to_seq |> List.of_seq) @@ ["abc"]
 
 let test_gen_min_fst () =
-  let items = ["cat", "bat"; "car", "bat"; "dog", "bat"] in
+  let items = ["cat", "bat"; "catamaran", "bat"; "car", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in
   let (start_state, transducer) = Fst.create_minimal_transducer 'a' 'z' items in
   Fst.print_transducer transducer start_state "out.dot"
+
+let test_remainder () =
+  let inputs = ["", "", ""; "ab","abc","c"] in
+  List.iter (fun (s1, s2, expected) ->
+    let result = Fst.remainder s1 s2 in
+    Alcotest.(check string) "Remainder should be a suffix of the second input" result expected) inputs
 
 (*
 let int_range s e =
@@ -62,6 +68,7 @@ let tests = [
   "Setting a transition should allow it to be returned", `Quick, test_transition;
   "Setting a state_outpu should allow it to be returned", `Quick, test_state_output;
   "Create a minimum fst", `Quick, test_gen_min_fst;
+  "Create remainder", `Quick, test_remainder;
   (*"zig_zag_decode_int should return un zig zagged ints", `Quick, test_zig_zag_decode_int;
   "msb should return the index of the most significant bit", `Quick, test_msb;*)
 ]

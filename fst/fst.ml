@@ -1,16 +1,48 @@
+module String_set = Set.Make(String)
+module type S = sig
+  type 'a t
+  type state
+
+  val bind: 'a t -> ('a -> 'b t) -> 'b t
+  val (let*): 'a t -> ('a -> 'b t) -> 'b t
+  val return: 'a -> 'a t
+  val fold_left: ('a -> 'b -> 'a t) -> 'a t -> 'b list -> 'a t
+  val cond: bool t -> if_true:(unit -> 'a t) -> if_false:(unit -> 'a t) -> 'a t
+
+  val run: Char.t -> Char.t -> 'a t -> 'a
+  val create_state: state t
+
+  val final: state -> Bool.t t
+  val set_final: state -> bool -> unit t
+
+  val transition: state -> Char.t -> state Option.t t
+  val transitions: state -> (Char.t * state) list t
+  val set_transition: state -> Char.t -> state -> unit t
+
+  val state_output: state -> String_set.t t
+  val set_state_output: state -> String_set.t -> unit t
+
+  val output: state -> Char.t -> String.t Option.t t
+  val output_str: state -> Char.t -> String.t t
+  val set_output: state -> Char.t -> String.t -> unit t
+
+  val copy_state: state -> state t
+  val clear_state: state -> unit t
+
+  val member: state -> state option t
+  val insert: state -> unit t
+
+  val print_transducer: state -> String.t -> unit t
+end
+
 module Int_set = Set.Make(Int)
 
 module Int_map = Map.Make(Int)
 
 module Char_map = Map.Make(Char)
 
-module String_set = Set.Make(String)
 
-module Transition = struct
-  type t = (int * char) [@@deriving ord]
-end
-
-type t = {
+type transducer = {
   next_state: int;
   first_char: char;
   last_char: char;
@@ -21,6 +53,22 @@ type t = {
   dictionary: int list
 
 }
+
+type 'a t = transducer -> ('a * transducer)
+type state = int
+
+let run first_char last_char (f:'a t) =
+  let transducer = {
+    next_state = 0;
+    first_char;
+    last_char;
+    final_states = Int_set.empty;
+    transitions = Int_map.empty;
+    state_outputs = Int_map.empty;
+    outputs = Int_map.empty;
+    dictionary = [];
+  } in
+  f transducer |> fst
 
 let make first_char last_char =
   {
@@ -33,8 +81,6 @@ let make first_char last_char =
     outputs = Int_map.empty;
     dictionary = [];
   }
-
-type 'a m = t -> ('a * t)
 
 let show_dictionary { dictionary; _} = (String.concat ", " (List.map (fun n -> Printf.sprintf "%d" n) dictionary))
 
@@ -54,6 +100,15 @@ let cond pred ~if_true ~if_false =
   else
     if_false ()
 
+let fold_left f init l transducer =
+  let (init, transducer) = init transducer in
+  let rec loop l acc transducer =
+    match l with
+    | [] -> (acc, transducer)
+    | x::rest ->
+       let (res, transducer) = f acc x transducer in
+       loop rest res transducer in
+  loop l init transducer
 
 (*
 Create a new state in the transducer.
@@ -129,7 +184,7 @@ let set_output state char output transducer =
     Int_map.add state updated_state_transitions outputs in
   ((), { transducer with outputs })
 
-let copy_state state (transducer: t) =
+let copy_state state transducer =
   let {
     next_state;
     final_states;
@@ -203,13 +258,13 @@ let rec compare_states state1 state2 transducer =
         List.compare (fun s1 s2 ->compare_states s1 s2 transducer) states_1 states_2
 
 
-let member state (transducer: t) =
+let member state transducer =
   (List.find_opt (fun stored_state -> compare_states stored_state state transducer = 0 ) transducer.dictionary, transducer)
 
 let insert state transducer =
    ((), { transducer with dictionary = state::transducer.dictionary })
 
-let print_transducer transducer state filename =
+let print_transducer state filename transducer =
   let oc = open_out filename in
   let state_id state = Printf.sprintf "state_%d" state in
   Printf.fprintf oc "digraph {";
@@ -227,10 +282,11 @@ let print_transducer transducer state filename =
         ) labels in
   loop state;
   Printf.fprintf oc "}";
-  close_out oc
+  close_out oc;
+  ((), transducer)
 
 
-let find_minimized state =
+(*let find_minimized state =
   let* r = member state in
   match r with
   | None ->
@@ -341,3 +397,4 @@ let create_minimal_transducer first_char last_char items =
        loop (i-1) transducer in
    let transducer = loop (String.length current_word - 1) transducer in
    find_minimized temp_states.(0) transducer
+*)

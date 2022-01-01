@@ -3,7 +3,8 @@ open Lucene_fst
 let test_gen_min_fst () =
   let module Builder = Acyclic_transducer.Make(Fst) in
 (*  let items = ["ca", "bat"; "cat", "bat"; "car", "bat";  "co", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in*)
-  let items = ["car", "bat"; "cat", "bat"; "catamaran", "bat"; "car", "bat"; "cog", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in
+
+  let items = ["car", "bat"; "cat", "bat"; "catamaran", "bar"; "cog", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in
   ignore (Builder.create_minimal_transducer 'a' 'z' items)
 (*  Fst.print_transducer transducer start_state "out.dot"*)
 

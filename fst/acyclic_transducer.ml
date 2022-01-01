@@ -29,8 +29,6 @@ let find_minimized state =
   let* _ = insert copy in return copy
   | Some state -> return state
 
-
-
 let rec make_n_states n =
   if n = 0 then return []
   else
@@ -87,11 +85,15 @@ let create_minimal_transducer first_char last_char items =
        if i = String.length current_word then
          return ()
        else
+         let* _ = return (Printf.printf "Before\n") in
+         let* _ = debug in
          let current_ch = String.get current_word i in
          let current_state = temp_states.(i) in
-         let* existing_output = output_str temp_states.(i) current_ch in
+         let* existing_output = output temp_states.(i) current_ch in
+         let existing_output = Option.value existing_output ~default:current_output in
          let common_prefix = longest_common_prefix existing_output current_output in
          let word_suffix = remainder common_prefix existing_output in
+         let* _ = return (Printf.printf "common prefix: %s, word suffix = %s\n" common_prefix word_suffix) in
          let* _  = set_output temp_states.(i) current_ch common_prefix in
          let* current_transitions = transitions current_state in
          let* _ = fold_left (fun _ (ch, next_state) ->
@@ -104,6 +106,9 @@ let create_minimal_transducer first_char last_char items =
            set_state_output temp_states.(i) updated_strings
          ) ~if_false:(fun () -> return ()) in
          let current_output = remainder common_prefix current_output in
+        let* _ = return (Printf.printf "After\n") in
+        let* _ = debug in
+        let* _ = return (Printf.printf "------------------------\n\n") in
          loop (i + 1) current_output end in
        let* _  = loop 0 current_output in
        return current_word in
@@ -117,6 +122,8 @@ let create_minimal_transducer first_char last_char items =
        loop (i-1) in
    let* _ = loop (String.length current_word - 1) in
    let* start_state = find_minimized temp_states.(0) in
+   let* _ = debug in
+   let* _ = return (Printf.printf "Final transducer\n") in
    Fst.print_transducer start_state "out.dot")
 
 end

@@ -33,6 +33,8 @@ module type S = sig
   val insert: state -> unit t
 
   val print_transducer: state -> String.t -> unit t
+
+  val debug: unit t
 end
 
 module Int_set = Set.Make(Int)
@@ -265,136 +267,47 @@ let insert state transducer =
    ((), { transducer with dictionary = state::transducer.dictionary })
 
 let print_transducer state filename transducer =
+  let visited = ref Int_set.empty in
   let oc = open_out filename in
   let state_id state = Printf.sprintf "state_%d" state in
   Printf.fprintf oc "digraph {";
   let rec loop state =
+    if not (Int_set.mem state (!visited)) then begin
+    visited := Int_set.add state (!visited);
     let transitions = Int_map.find state transducer.transitions  in
     let outputs = Int_map.find state transducer.outputs in
+    let state_outputs = Int_map.find state transducer.state_outputs |> String_set.to_seq |> List.of_seq |> String.concat "," in
     let labels = transitions |> Char_map.bindings |> List.map fst in
     let node_shape = if final state transducer |> value then "doublecircle" else "circle" in
-    Printf.fprintf oc "%s [label = \"%d\" shape = \"%s\"]\n" (state_id state) state node_shape;
+    Printf.fprintf oc "%s [label = \"%d/%s\" shape = \"%s\"]\n" (state_id state) state state_outputs node_shape;
     List.iter (fun label ->
         let to_state = Char_map.find label transitions in
         let arc_output = Char_map.find label outputs in
         Printf.fprintf oc "%s -> %s [label = \"%c/%s\"]\n" (state_id state) (state_id to_state) label arc_output;
         loop to_state
-        ) labels in
+        ) labels end in
   loop state;
   Printf.fprintf oc "}";
   close_out oc;
   ((), transducer)
 
 
-(*let find_minimized state =
-  let* r = member state in
-  match r with
-  | None ->
-  let* copy = copy_state state in
-  let* _ = insert copy in return copy
-  | Some state -> return state
-
-let common_prefix_length s1 s2 =
- let n = Int.min (String.length s1) (String.length s2) in
- let rec loop i =
-   if i = n || not (Char.equal (String.get s1 i) (String.get s2 i)) then i
-   else loop (i + 1) in
- loop 0
-
-
-let rec make_n_states n =
-  if n = 0 then return []
-  else
-    let* state = create_state in
-    let* list = make_n_states (n - 1) in
-    return (state :: list)
-
-let longest_common_prefix s1 s2 =
-  let l = common_prefix_length s1 s2 in
-  String.sub s1 0 l
-
-(* Return what is left from the second string
-once the common prefix is removed *)
-let remainder s1 s2 =
-  let l = common_prefix_length s1 s2 in
-  String.sub s2 l (String.length s2 - l)
-
-let concat s1 s2 = s1 ^ s2
-
-let minimize_suffix temp_states word prefix_length =
-  let rec loop i =
-    if i = prefix_length - 1 then
-      (return ())
-    else
-      let ch = String.get word i in
-      let next_state = temp_states.(i+1) in
-      let prev_state = temp_states.(i) in
-      let* min_state = find_minimized next_state in
-      let* _ = set_transition prev_state ch min_state in
-      (loop (i - 1)) in
- loop (String.length word - 1)
-
-let initialize_tail_states temp_states word prefix_length =
-  let rec loop i =
-    if i = String.length word then
-      return ()
-    else
-      let ch = String.get word i in
-      let prev_state = temp_states.(i) in
-      let next_state = temp_states.(i+1) in
-      let* _ = clear_state next_state in
-      let* _ = set_transition prev_state ch next_state in
-      loop (i + 1) in
-  loop prefix_length
-
-let create_minimal_transducer first_char last_char items =
-  let max_width = List.fold_left (fun current_max (word, _) -> Int.max current_max (String.length word)) 0 items in
-  let transducer = make first_char last_char in
-  let previous_word = "" in
-  let (temp_states, transducer) =
-       let (list, transducer) = make_n_states (max_width + 1) transducer in
-       (Array.of_list list, transducer) in
-  let add_to_transducer previous_word (current_word, current_output) =
-    let prefix_length = common_prefix_length previous_word current_word in
-    (* Minimise the suffix of the previous word *)
-     let* _ = minimize_suffix temp_states previous_word prefix_length in
-     (* Initialize tail states for current word *)
-     let* _ = initialize_tail_states temp_states current_word prefix_length in
-     (* Set last char transition of current word as final *)
-     let* _  = if not (String.equal current_word previous_word) then
-         let* _ = set_final temp_states.(String.length current_word) true in
-         set_state_output temp_states.(String.length current_word) (String_set.singleton "")
-       else return () in
-     let rec loop i current_output = begin
-       if i = String.length current_word then
-         return ()
-       else
-         let current_ch = String.get current_word i in
-         let current_state = temp_states.(i) in
-         let* existing_output = output_str temp_states.(i) current_ch in
-         let common_prefix = longest_common_prefix existing_output current_output in
-         let word_suffix = remainder common_prefix existing_output in
-         let* _  = set_output temp_states.(i) current_ch common_prefix in
-         let* _ = (fun transducer -> List.fold_left (fun (_, transducer) (ch, next_state) ->
-           set_output next_state ch (concat word_suffix (output_str next_state ch transducer |> value)) transducer
-         ) ((), transducer) (transitions current_state transducer |> value)) in
-         let* _ = cond (final temp_states.(i)) ~if_true:(fun () ->
-           let* strings = state_output temp_states.(i) in
-           let updated_strings = String_set.map (fun s -> concat word_suffix s) strings in
-           set_state_output temp_states.(i) updated_strings
-         ) ~if_false:(fun () -> return ()) in
-         let current_output = remainder common_prefix current_output in
-         loop (i + 1) current_output end in
-       let* _  = loop 0 current_output in
-       return current_word in
-  let (current_word, transducer) = List.fold_left (fun (previous_word, transducer) (current_word, current_output) -> add_to_transducer previous_word (current_word, current_output) transducer) (previous_word, transducer) items in
-  let rec loop i transducer =
-     if i = 0 then
-       transducer
-     else
-       let min_state, transducer = find_minimized temp_states.(i+1) transducer in
-       let transducer = set_transition temp_states.(i) (String.get current_word i) min_state transducer |> st in
-       loop (i-1) transducer in
-   let transducer = loop (String.length current_word - 1) transducer in
-   find_minimized temp_states.(0) transducer
-*)
+  (*  next_state: int;
+      first_char: char;
+      last_char: char;
+      final_states: Int_set.t;
+      transitions:  int Char_map.t Int_map.t;
+      state_outputs: String_set.t Int_map.t;
+      outputs: string Char_map.t Int_map.t;
+      dictionary: int list*)
+let debug transducer =
+  Printf.printf "Next_state: %d\n" transducer.next_state;
+  Printf.printf "Final states:\n%s\n" (Int_set.to_seq transducer.final_states |> List.of_seq |> List.map Int.to_string |>String.concat ", ");
+  Printf.printf "Transitions:\n";
+  Int_map.iter (fun state transitions -> Printf.printf "%d: %s\n" state (Char_map.to_seq transitions |> List.of_seq |> List.map (fun (c, s) -> Printf.sprintf "%c->%d" c s) |> String.concat ", ")) transducer.transitions;
+  Printf.printf "State Outputs:\n";
+  Int_map.iter (fun state state_outputs -> Printf.printf "%d: %s\n" state (String_set.to_seq state_outputs |> List.of_seq |> String.concat ", ")) transducer.state_outputs;
+  Printf.printf "Outputs:\n";
+  Int_map.iter (fun state transitions -> Printf.printf "%d: %s\n" state (Char_map.to_seq transitions |> List.of_seq |> List.map (fun (c, s) -> Printf.sprintf "%c->%s" c s) |> String.concat ", ")) transducer.outputs;
+  Printf.printf "Dictionary:\n %s" (List.map string_of_int transducer.dictionary |> String.concat ", ");
+  ((), transducer)

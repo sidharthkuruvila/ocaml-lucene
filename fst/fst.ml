@@ -23,6 +23,7 @@ module type S = sig
   val set_state_output: state -> String_set.t -> unit t
 
   val output: state -> Char.t -> String.t Option.t t
+  val outputs: state -> (Char.t * string) list t
   val output_str: state -> Char.t -> String.t t
   val set_output: state -> Char.t -> String.t -> unit t
 
@@ -35,6 +36,7 @@ module type S = sig
   val print_transducer: state -> String.t -> unit t
 
   val debug: unit t
+  val accept: string -> state -> string option t
 end
 
 module Int_set = Set.Make(Int)
@@ -88,12 +90,16 @@ let show_dictionary { dictionary; _} = (String.concat ", " (List.map (fun n -> P
 
 let bind m f t = let (a, t) = (m t) in f a t
 
+let map m f t = let (a, t) = (m t) in (f a, t)
+
 let return a t = (a, t)
 
 let value (a, _) = a
 let st (_, state) = state
 
 let (let*) = bind
+let (>>|) = map
+let (>>=) = bind
 
 let cond pred ~if_true ~if_false =
   let* b = pred in
@@ -112,6 +118,8 @@ let fold_left f init l transducer =
        loop rest res transducer in
   loop l init transducer
 
+let all l=
+  fold_left (fun acc a t -> let (r, t) = a t in (r :: acc, t)) (return []) l >>| List.rev
 (*
 Create a new state in the transducer.
 This is done by adding empty items in the transitions, state_outputs and outputs maps
@@ -168,6 +176,9 @@ let set_state_output state outputs transducer =
 let output state char transducer =
   let state_outputs = Int_map.find_opt state transducer.outputs in
     (Option.bind state_outputs (fun state_outputs -> Char_map.find_opt char state_outputs), transducer)
+
+let outputs state transducer =
+  (Int_map.find state transducer.outputs |> Char_map.to_seq |> List.of_seq, transducer)
 
 let output_str state char =
   let* o = output state char in
@@ -309,5 +320,24 @@ let debug transducer =
   Int_map.iter (fun state state_outputs -> Printf.printf "%d: %s\n" state (String_set.to_seq state_outputs |> List.of_seq |> String.concat ", ")) transducer.state_outputs;
   Printf.printf "Outputs:\n";
   Int_map.iter (fun state transitions -> Printf.printf "%d: %s\n" state (Char_map.to_seq transitions |> List.of_seq |> List.map (fun (c, s) -> Printf.sprintf "%c->%s" c s) |> String.concat ", ")) transducer.outputs;
-  Printf.printf "Dictionary:\n %s" (List.map string_of_int transducer.dictionary |> String.concat ", ");
+  Printf.printf "Dictionary:\n %s\n\n" (List.map string_of_int transducer.dictionary |> String.concat ", ");
   ((), transducer)
+
+let accept input start_state =
+  let rec loop acc state i =
+    if String.length input = i then
+      let* is_final = final state in
+      if is_final then
+         return (Some acc)
+      else
+         return None
+    else
+      let ch = String.get input i in
+      let* next_state = transition state ch in
+      match next_state with
+      | None -> return None
+      | Some next_state ->
+        let* current_output = output_str state ch in
+        let acc = String.concat "" [acc; current_output] in
+        loop acc next_state (i+1) in
+  loop "" start_state 0

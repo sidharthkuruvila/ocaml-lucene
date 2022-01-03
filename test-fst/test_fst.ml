@@ -23,6 +23,25 @@ let test_state_output () =
   let transducer = Fst.set_state_output state (Fst.String_set.singleton "abc") transducer |> Fst.st in
   Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output state transducer |> Fst.value |> Fst.String_set.to_seq |> List.of_seq) @@ ["abc"]
 
+
+
+
+let test_compare () =
+
+  let transducer = Fst.make 'a' 'z' in
+  let (states_seq, transducer) = Fst.all [
+    Fst.create_state;
+    Fst.create_state;
+    Fst.create_state;
+    Fst.create_state;
+  ] transducer in
+  let states = states_seq |> Array.of_list in
+  let (_, _) = Fst.fold_left (fun _ a -> a) (Fst.return ()) [
+    Fst.set_transition states.(0) 'a' states.(3);
+    Fst.set_transition states.(1) 'a' states.(3);
+  ] transducer in
+  let res = Fst.compare_states states.(0) states.(1) transducer in
+  Alcotest.(check int) "like items are equal" res 0
 (*
 let int_range s e =
   List.of_seq (Seq.unfold (fun n -> if n = e then None else Some (n, n + 1)) s)
@@ -56,6 +75,7 @@ let tests = [
   "final and set_final should return and update the final flag for a state", `Quick, test_final;
   "Setting a transition should allow it to be returned", `Quick, test_transition;
   "Setting a state_outpu should allow it to be returned", `Quick, test_state_output;
+  "States should be comparable", `Quick, test_compare;
   (*"zig_zag_decode_int should return un zig zagged ints", `Quick, test_zig_zag_decode_int;
   "msb should return the index of the most significant bit", `Quick, test_msb;*)
 ]

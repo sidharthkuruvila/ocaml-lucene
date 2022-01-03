@@ -1,4 +1,6 @@
 
+
+
 let common_prefix_length s1 s2 =
  let n = Int.min (String.length s1) (String.length s2) in
  let rec loop i =
@@ -63,14 +65,9 @@ let initialize_tail_states temp_states word prefix_length =
       loop (i + 1) in
   loop prefix_length
 
-let create_minimal_transducer first_char last_char items =
-  let max_width = List.fold_left (fun current_max (word, _) -> Int.max current_max (String.length word)) 0 items in
-  run first_char last_char (
-  let previous_word = "" in
-  let* temp_states =
-       let* list = make_n_states (max_width + 1) in
-       return (Array.of_list list) in
-  let add_to_transducer (previous_word: string) (current_word, current_output : (string * string)) : string t =
+let find_max_width items = List.fold_left (fun current_max (word, _) -> Int.max current_max (String.length word)) 0 items
+
+let add_to_transducer temp_states (previous_word: string) (current_word, current_output : (string * string)) : string t =
     let prefix_length = common_prefix_length previous_word current_word in
     (* Minimise the suffix of the previous word *)
      let* _ = minimize_suffix temp_states previous_word prefix_length in
@@ -85,45 +82,46 @@ let create_minimal_transducer first_char last_char items =
        if i = String.length current_word then
          return ()
        else
-         let* _ = return (Printf.printf "Before\n") in
-         let* _ = debug in
          let current_ch = String.get current_word i in
          let current_state = temp_states.(i) in
-         let* existing_output = output temp_states.(i) current_ch in
-         let existing_output = Option.value existing_output ~default:current_output in
+         let next_state = temp_states.(i+1) in
+         let* existing_output = output current_state current_ch >>| Option.value ~default:current_output in
          let common_prefix = longest_common_prefix existing_output current_output in
          let word_suffix = remainder common_prefix existing_output in
-         let* _ = return (Printf.printf "common prefix: %s, word suffix = %s\n" common_prefix word_suffix) in
          let* _  = set_output temp_states.(i) current_ch common_prefix in
-         let* current_transitions = transitions current_state in
-         let* _ = fold_left (fun _ (ch, next_state) ->
-           let* old_output = output_str next_state ch in
-           set_output next_state ch (concat word_suffix old_output)
-         ) (return ()) current_transitions in
+         let* next_outputs = outputs next_state in
+         let* _ = fold_left (fun _ (ch, _) ->
+           let* old_output = output_str current_state ch in
+           let* _ = set_output next_state ch (concat word_suffix old_output) in
+           return ()
+         ) (return ()) next_outputs in
          let* _ = cond (final temp_states.(i)) ~if_true:(fun () ->
            let* strings = state_output temp_states.(i) in
            let updated_strings = String_set.map (fun s -> concat word_suffix s) strings in
            set_state_output temp_states.(i) updated_strings
          ) ~if_false:(fun () -> return ()) in
          let current_output = remainder common_prefix current_output in
-        let* _ = return (Printf.printf "After\n") in
-        let* _ = debug in
-        let* _ = return (Printf.printf "------------------------\n\n") in
          loop (i + 1) current_output end in
        let* _  = loop 0 current_output in
-       return current_word in
-  let* current_word = fold_left add_to_transducer (return previous_word) items in
+       return current_word
+
+let create_minimal_transducer items =
+  (* Find the length of the longest input string *)
+  let max_width = find_max_width items in
+  (* The previoust string in the loop, initialized to an empty string for the first run *)
+  let previous_word = "" in
+  (* An array containing temprary states for building the fst *)
+  let* temp_states =
+       let* list = make_n_states (max_width + 1) in
+       return (Array.of_list list) in
+  let* current_word = fold_left (add_to_transducer temp_states) (return previous_word) items in
   let rec loop i =
-     if i = 0 then
+     if i < 0 then
        return ()
      else
        let* min_state = find_minimized temp_states.(i+1) in
        let* _ = set_transition temp_states.(i) (String.get current_word i) min_state in
        loop (i-1) in
    let* _ = loop (String.length current_word - 1) in
-   let* start_state = find_minimized temp_states.(0) in
-   let* _ = debug in
-   let* _ = return (Printf.printf "Final transducer\n") in
-   Fst.print_transducer start_state "out.dot")
-
+   find_minimized temp_states.(0)
 end

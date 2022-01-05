@@ -1,8 +1,12 @@
-module String_set = Set.Make(String)
-let string_of_string_set s = Printf.sprintf "String_set [%s]" (String_set.to_seq s |> List.of_seq |> String.concat "; ")
+
+
 module type S = sig
   type 'a t
   type state
+
+  module Output_set: sig
+   type t
+  end
 
   val bind: 'a t -> ('a -> 'b t) -> 'b t
   val (let*): 'a t -> ('a -> 'b t) -> 'b t
@@ -20,8 +24,8 @@ module type S = sig
   val transitions: state -> (Char.t * state) list t
   val set_transition: state -> Char.t -> state -> unit t
 
-  val state_output: state -> String_set.t t
-  val set_state_output: state -> String_set.t -> unit t
+  val state_output: state -> Output_set.t t
+  val set_state_output: state -> Output_set.t -> unit t
 
   val output: state -> Char.t -> String.t Option.t t
   val outputs: state -> (Char.t * string) list t
@@ -37,9 +41,11 @@ module type S = sig
   val print_transducer: state -> String.t -> unit t
 
   val debug: unit t
-  val accept: string -> state -> String_set.t t
+  val accept: string -> state -> Output_set.t t
 end
 
+module Output_set = Set.Make(String)
+let string_of_output_set s = Printf.sprintf "String_set [%s]" (Output_set.to_seq s |> List.of_seq |>String.concat "; ")
 module Int_set = Set.Make(Int)
 
 module Int_map = Map.Make(Int)
@@ -53,7 +59,7 @@ type transducer = {
   last_char: char;
   final_states: Int_set.t;
   transitions:  int Char_map.t Int_map.t;
-  state_outputs: String_set.t Int_map.t;
+  state_outputs: Output_set.t Int_map.t;
   outputs: string Char_map.t Int_map.t;
   dictionary: int list
 
@@ -139,7 +145,7 @@ let create_state transducer =
     transducer with
     next_state = next_state + 1;
     transitions = Int_map.add next_state Char_map.empty transitions;
-    state_outputs = Int_map.add next_state String_set.empty state_outputs;
+    state_outputs = Int_map.add next_state Output_set.empty state_outputs;
     outputs = Int_map.add next_state Char_map.empty outputs;
   })
 
@@ -228,7 +234,7 @@ let clear_state state transducer=
     (* TODO Should the outputs be removed, I can't see the value of keeping them
        without the transitions *)
     outputs = Int_map.add state Char_map.empty outputs;
-    state_outputs = Int_map.add state String_set.empty state_outputs;
+    state_outputs = Int_map.add state Output_set.empty state_outputs;
   })
 
 (* TODO Should we pass separate copies of the transducer
@@ -269,7 +275,7 @@ let rec compare_states state1 state2 transducer =
         outputs_cmp
       else
         (* Compare the final state outputs for each transition *)
-        let state_outputs_cmp = String_set.compare (Int_map.find state1 transducer.state_outputs) (Int_map.find state2 transducer.state_outputs) in
+        let state_outputs_cmp = Output_set.compare (Int_map.find state1 transducer.state_outputs) (Int_map.find state2 transducer.state_outputs) in
         if state_outputs_cmp <> 0 then
          state_outputs_cmp
         else
@@ -295,7 +301,7 @@ let print_transducer state filename transducer =
     visited := Int_set.add state (!visited);
     let transitions = Int_map.find state transducer.transitions  in
     let outputs = Int_map.find state transducer.outputs in
-    let state_outputs = Int_map.find state transducer.state_outputs |> String_set.to_seq |> List.of_seq |> String.concat "," in
+    let state_outputs = Int_map.find state transducer.state_outputs |> Output_set.to_seq |> List.of_seq |> String.concat "," in
     let labels = transitions |> Char_map.bindings |> List.map fst in
     let node_shape = if final state transducer |> value then "doublecircle" else "circle" in
     Printf.fprintf oc "%s [label = \"%d/%s\" shape = \"%s\"]\n" (state_id state) state state_outputs node_shape;
@@ -316,7 +322,7 @@ let debug transducer =
   Printf.printf "Transitions:\n";
   Int_map.iter (fun state transitions -> Printf.printf "%d: %s\n" state (Char_map.to_seq transitions |> List.of_seq |> List.map (fun (c, s) -> Printf.sprintf "%c->%d" c s) |> String.concat ", ")) transducer.transitions;
   Printf.printf "State Outputs:\n";
-  Int_map.iter (fun state state_outputs -> Printf.printf "%d: %s\n" state (String_set.to_seq state_outputs |> List.of_seq |> String.concat ", ")) transducer.state_outputs;
+  Int_map.iter (fun state state_outputs -> Printf.printf "%d: %s\n" state (string_of_output_set state_outputs)) transducer.state_outputs;
   Printf.printf "Outputs:\n";
   Int_map.iter (fun state transitions -> Printf.printf "%d: %s\n" state (Char_map.to_seq transitions |> List.of_seq |> List.map (fun (c, s) -> Printf.sprintf "%c->%s" c s) |> String.concat ", ")) transducer.outputs;
   Printf.printf "Dictionary:\n %s\n\n" (List.map string_of_int transducer.dictionary |> String.concat ", ");
@@ -328,14 +334,14 @@ let accept input start_state =
       let* is_final = final state in
       let* so = state_output state in
       if is_final then
-         return (String_set.map (fun o -> acc ^ o) so)
+         return (Output_set.map (fun o -> acc ^ o) so)
       else
-         return String_set.empty
+         return Output_set.empty
     else
       let ch = String.get input i in
       let* next_state = transition state ch in
       match next_state with
-      | None -> return String_set.empty
+      | None -> return Output_set.empty
       | Some next_state ->
         let* current_output = output_str state ch in
         let acc = String.concat "" [acc; current_output] in

@@ -15,11 +15,10 @@ let test_gen_min_fst () =
      let* _ = Fst.print_transducer start_state "out.dot" in
      let* results = Fst.fold_left (fun acc (i, o) -> let* res = Fst.accept i start_state in return ((i, res, o) :: acc)) (return []) items in
      List.iter (fun (i, res, o) ->
-       let contained = Fst.String_set.mem o res in
-       Alcotest.(check bool) (Printf.sprintf "Expected %s for input %s got %s" o i (Fst.string_of_string_set res)) true contained) results;
+       let contained = Fst.Output_set.mem o res in
+       Alcotest.(check bool) (Printf.sprintf "Expected %s for input %s got %s" o i (Fst.string_of_output_set res)) true contained) results;
      return ()))
 (*  Fst.print_transducer transducer start_state "out.dot"*)
-
 
 let test_remainder () : unit =
   let inputs = ["", "", ""; "ab","abc","c"] in
@@ -58,22 +57,6 @@ let read_spellings filename : (string * (string list)) list =
    | ([], _) -> l in
   loop lines []
 
-let rec take_n n l  =
-  if n = 0 then
-    []
-  else
-    match l with
-    | x::xs -> x::(take_n (n - 1) xs)
-    | [] -> []
-
-let rec drop_n n l =
- if n = 0 then
-   l
- else
- match l with
- | _::xs -> drop_n (n - 1) xs
- | [] -> []
-
 let test_spellings () =
   let module Builder = Acyclic_transducer.Make(Fst) in
   let spellings = read_spellings "data/spelling-corrections.txt" in
@@ -86,10 +69,9 @@ let test_spellings () =
        let* _ = Fst.print_transducer start_state "out.dot" in
        let* results = Fst.fold_left (fun acc (i, o) -> let* res = Fst.accept i start_state in return ((i, res, o) :: acc)) (return []) mappings in
        List.iter (fun (i, res, o) ->
-         let contained = Fst.String_set.mem o res in
-                Alcotest.(check bool) (Printf.sprintf "Expected %s for input %s got %s" o i (Fst.string_of_string_set res)) true contained) (List.rev results);
+         let contained = Fst.Output_set.mem o res in
+                Alcotest.(check bool) (Printf.sprintf "Expected %s for input %s got %s" o i (Fst.string_of_output_set res)) true contained) (List.rev results);
        return ()))
-
 
 let tests = [
   "Create a minimum fst", `Quick, test_gen_min_fst;

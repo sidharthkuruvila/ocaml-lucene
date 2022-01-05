@@ -76,7 +76,7 @@ let add_to_transducer temp_states (previous_word: string) (current_word, current
      (* Set last char transition of current word as final *)
      let* _  = if not (String.equal current_word previous_word) then
          let* _ = set_final temp_states.(String.length current_word) true in
-         set_state_output temp_states.(String.length current_word) (String_set.singleton "")
+         set_state_output temp_states.(String.length current_word) (Output_set.singleton "")
        else return () in
      let rec loop i current_output = begin
        if i = String.length current_word then
@@ -97,7 +97,7 @@ let add_to_transducer temp_states (previous_word: string) (current_word, current
          ) (return ()) next_outputs in
          let* _ = cond (final temp_states.(i+1)) ~if_true:(fun () ->
            let* strings = state_output temp_states.(i+1) in
-           let updated_strings = String_set.map (fun s -> concat word_suffix s) strings in
+           let updated_strings = Output_set.map (fun s -> concat word_suffix s) strings in
            set_state_output temp_states.(i+1) updated_strings
          ) ~if_false:(fun () -> return ()) in
          let current_output = remainder common_prefix current_output in
@@ -108,8 +108,8 @@ let add_to_transducer temp_states (previous_word: string) (current_word, current
          let state = temp_states.(String.length current_word) in
          let* sos = state_output state in
          Printf.printf "current_word: %s, current_output: %s, sos: %s\n" current_word current_output
-          (String_set.to_seq sos |> List.of_seq |> String.concat ", ");
-         set_state_output state (String_set.add current_output sos)
+          (Output_set.to_seq sos |> List.of_seq |> String.concat ", ");
+         set_state_output state (Output_set.add current_output sos)
        else
          return () in
 

@@ -20,8 +20,8 @@ let test_transition () =
 let test_state_output () =
   let transducer = Fst.make 'a' 'z' in
   let (state, transducer) = Fst.create_state transducer in
-  let transducer = Fst.set_state_output state (Fst.String_set.singleton "abc") transducer |> Fst.st in
-  Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output state transducer |> Fst.value |> Fst.String_set.to_seq |> List.of_seq) @@ ["abc"]
+  let transducer = Fst.set_state_output state (Fst.Output_set.singleton "abc") transducer |> Fst.st in
+  Alcotest.(check (list string)) "state_output should return the set of outputs"  (Fst.state_output state transducer |> Fst.value |> Fst.Output_set.to_seq |> List.of_seq) @@ ["abc"]
 
 
 

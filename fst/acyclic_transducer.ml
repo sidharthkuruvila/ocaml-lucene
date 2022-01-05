@@ -80,7 +80,7 @@ let add_to_transducer temp_states (previous_word: string) (current_word, current
        else return () in
      let rec loop i current_output = begin
        if i = String.length current_word then
-         return ()
+         return current_output
        else
          let current_ch = String.get current_word i in
          let current_state = temp_states.(i) in
@@ -88,21 +88,31 @@ let add_to_transducer temp_states (previous_word: string) (current_word, current
          let* existing_output = output current_state current_ch >>| Option.value ~default:current_output in
          let common_prefix = longest_common_prefix existing_output current_output in
          let word_suffix = remainder common_prefix existing_output in
+(*         let* _ = debug in*)
          let* _  = set_output temp_states.(i) current_ch common_prefix in
          let* next_outputs = outputs next_state in
          let* _ = fold_left (fun _ (ch, _) ->
-           let* old_output = output_str current_state ch in
+           let* old_output = output_str next_state ch in
            let* _ = set_output next_state ch (concat word_suffix old_output) in
            return ()
          ) (return ()) next_outputs in
-         let* _ = cond (final temp_states.(i)) ~if_true:(fun () ->
-           let* strings = state_output temp_states.(i) in
+(*         let*_ = debug in*)
+         let* _ = cond (final temp_states.(i+1)) ~if_true:(fun () ->
+           let* strings = state_output temp_states.(i+1) in
            let updated_strings = String_set.map (fun s -> concat word_suffix s) strings in
-           set_state_output temp_states.(i) updated_strings
+           set_state_output temp_states.(i+1) updated_strings
          ) ~if_false:(fun () -> return ()) in
          let current_output = remainder common_prefix current_output in
          loop (i + 1) current_output end in
-       let* _  = loop 0 current_output in
+       let* current_output = loop 0 current_output in
+       if String.length current_output > 0 then Printf.printf "Remaining output = %s\n" current_output;
+(*                 let* _ = if String.equal current_word previous_word then*)
+(*                   let state = temp_states.(String.length current_word - 1) in*)
+(*                   let* sos = state_output state in*)
+(*                   set_state_output state (String_set.add current_output sos)*)
+(*                 else*)
+(*                   let state = temp_states.(prefix_length) in*)
+(*                   set_output state (String.get current_word (prefix_length)) current_output in*)
        return current_word
 
 let create_minimal_transducer items =

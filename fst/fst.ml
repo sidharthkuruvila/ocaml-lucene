@@ -217,6 +217,7 @@ let clear_state state transducer=
     final_states;
     transitions;
     outputs;
+    state_outputs;
     _
   } = transducer in
   ((), {
@@ -226,6 +227,7 @@ let clear_state state transducer=
     (* TODO Should the outputs be removed, I can't see the value of keeping them
        without the transitions *)
     outputs = Int_map.add state Char_map.empty outputs;
+    state_outputs = Int_map.add state String_set.empty state_outputs;
   })
 
 (* TODO Should we pass separate copies of the transducer
@@ -302,15 +304,6 @@ let print_transducer state filename transducer =
   close_out oc;
   ((), transducer)
 
-
-  (*  next_state: int;
-      first_char: char;
-      last_char: char;
-      final_states: Int_set.t;
-      transitions:  int Char_map.t Int_map.t;
-      state_outputs: String_set.t Int_map.t;
-      outputs: string Char_map.t Int_map.t;
-      dictionary: int list*)
 let debug transducer =
   Printf.printf "Next_state: %d\n" transducer.next_state;
   Printf.printf "Final states:\n%s\n" (Int_set.to_seq transducer.final_states |> List.of_seq |> List.map Int.to_string |>String.concat ", ");
@@ -327,8 +320,9 @@ let accept input start_state =
   let rec loop acc state i =
     if String.length input = i then
       let* is_final = final state in
+      let* so = state_output state in
       if is_final then
-         return (Some acc)
+         return (Some (acc ^ (String_set.min_elt so)))
       else
          return None
     else

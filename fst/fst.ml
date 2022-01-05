@@ -44,6 +44,8 @@ module type S = sig
   val accept: string -> state -> Output_set.t t
 end
 
+module Make(Output: Output.S) = struct
+
 module Output_set = Set.Make(String)
 let string_of_output_set s = Printf.sprintf "String_set [%s]" (Output_set.to_seq s |> List.of_seq |>String.concat "; ")
 module Int_set = Set.Make(Int)
@@ -347,3 +349,7 @@ let accept input start_state =
         let acc = String.concat "" [acc; current_output] in
         loop acc next_state (i+1) in
   loop "" start_state 0
+
+end
+
+include Make(String_output)

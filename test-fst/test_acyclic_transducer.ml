@@ -2,21 +2,21 @@ open Lucene_fst
 open Fst
 let test_gen_min_fst () =
   let module Builder = Acyclic_transducer.Make(Fst) in
-(*  let items = ["ca", "bat"; "cat", "bat"; "car", "bat";  "co", "bat"; "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in*)
-
-(*  let items = ["ca", "bat"; "co", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in*)
-
   let items = [
-  "A", "Apennines";
-  "At", "Athenian";
-  "Ath", "Athenians";] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in
+    "ca", "bat";
+    "cat", "bat";
+    "cat", "bar";
+    "car", "bat";
+    "co", "bat";
+    "dog", "bar"] |> List.sort (fun (a,_) (b, _) -> String.compare a b) in
   ignore (
      Fst.run 'a' 'z' (
      let* start_state = Builder.create_minimal_transducer  items in
      let* _ = Fst.print_transducer start_state "out.dot" in
      let* results = Fst.fold_left (fun acc (i, o) -> let* res = Fst.accept i start_state in return ((i, res, o) :: acc)) (return []) items in
      List.iter (fun (i, res, o) ->
-       Alcotest.(check (option string)) (Printf.sprintf "Expected %s for input %s got %s" o i (Option.value res ~default:"<NONE>")) (Some o) res) results;
+       let contained = Fst.String_set.mem o res in
+       Alcotest.(check bool) (Printf.sprintf "Expected %s for input %s got %s" o i (Fst.string_of_string_set res)) true contained) results;
      return ()))
 (*  Fst.print_transducer transducer start_state "out.dot"*)
 
@@ -58,19 +58,36 @@ let read_spellings filename : (string * (string list)) list =
    | ([], _) -> l in
   loop lines []
 
+let rec take_n n l  =
+  if n = 0 then
+    []
+  else
+    match l with
+    | x::xs -> x::(take_n (n - 1) xs)
+    | [] -> []
+
+let rec drop_n n l =
+ if n = 0 then
+   l
+ else
+ match l with
+ | _::xs -> drop_n (n - 1) xs
+ | [] -> []
 
 let test_spellings () =
   let module Builder = Acyclic_transducer.Make(Fst) in
-  let spellings = read_spellings "data/wikipedia.txt" in
+  let spellings = read_spellings "data/spelling-corrections.txt" in
   let mappings: (string * string) list = List.concat_map (fun (c, ms) -> List.map (fun m -> (m, c)) ms) spellings
     |> List.sort (fun (a, _) (b, _) -> String.compare a b) in
+  List.iter (fun (i, o) -> Printf.printf "%s -> %s\n" i o) mappings;
     ignore (
   Fst.run 'a' 'z' (
        let* start_state = Builder.create_minimal_transducer  mappings in
        let* _ = Fst.print_transducer start_state "out.dot" in
        let* results = Fst.fold_left (fun acc (i, o) -> let* res = Fst.accept i start_state in return ((i, res, o) :: acc)) (return []) mappings in
        List.iter (fun (i, res, o) ->
-         Alcotest.(check (option string)) (Printf.sprintf "Expected %s for input %s got %s" o i (Option.value res ~default:"<NONE>")) (Some o) res) (List.rev results);
+         let contained = Fst.String_set.mem o res in
+                Alcotest.(check bool) (Printf.sprintf "Expected %s for input %s got %s" o i (Fst.string_of_string_set res)) true contained) (List.rev results);
        return ()))
 
 

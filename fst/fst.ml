@@ -1,4 +1,5 @@
 module String_set = Set.Make(String)
+let string_of_string_set s = Printf.sprintf "String_set [%s]" (String_set.to_seq s |> List.of_seq |> String.concat "; ")
 module type S = sig
   type 'a t
   type state
@@ -36,7 +37,7 @@ module type S = sig
   val print_transducer: state -> String.t -> unit t
 
   val debug: unit t
-  val accept: string -> state -> string option t
+  val accept: string -> state -> String_set.t t
 end
 
 module Int_set = Set.Make(Int)
@@ -267,6 +268,11 @@ let rec compare_states state1 state2 transducer =
       if outputs_cmp <> 0 then
         outputs_cmp
       else
+        (* Compare the final state outputs for each transition *)
+        let state_outputs_cmp = String_set.compare (Int_map.find state1 transducer.state_outputs) (Int_map.find state2 transducer.state_outputs) in
+        if state_outputs_cmp <> 0 then
+         state_outputs_cmp
+        else
         (* Compare the next state of each transition *)
         let states_1 = List.map (fun label -> Char_map.find label state1_transitions) labels in
         let states_2 = List.map (fun label -> Char_map.find label state2_transitions) labels in
@@ -322,14 +328,14 @@ let accept input start_state =
       let* is_final = final state in
       let* so = state_output state in
       if is_final then
-         return (Some (acc ^ (String_set.min_elt so)))
+         return (String_set.map (fun o -> acc ^ o) so)
       else
-         return None
+         return String_set.empty
     else
       let ch = String.get input i in
       let* next_state = transition state ch in
       match next_state with
-      | None -> return None
+      | None -> return String_set.empty
       | Some next_state ->
         let* current_output = output_str state ch in
         let acc = String.concat "" [acc; current_output] in

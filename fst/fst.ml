@@ -370,5 +370,3 @@ let accept input start_state =
 
 let state_to_int state = state
 end
-
-include Make(String_output)

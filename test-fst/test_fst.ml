@@ -1,4 +1,5 @@
 open Lucene_fst
+module Fst = Fst.Make(String_output)
 open Fst
 
 let test_final () =

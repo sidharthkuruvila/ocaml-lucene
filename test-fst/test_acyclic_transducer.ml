@@ -1,6 +1,7 @@
 open Lucene_fst
-open Fst
 let test_gen_min_fst () =
+  let module Fst = Fst.Make(String_output) in
+  let open Fst in
   let module Builder = Acyclic_transducer.Make(Fst) in
   let items = [
     "ca", "bat";
@@ -58,6 +59,8 @@ let read_spellings filename : (string * (string list)) list =
   loop lines []
 
 let test_spellings () =
+  let module Fst = Fst.Make(String_output) in
+  let open Fst in
   let module Builder = Acyclic_transducer.Make(Fst) in
   let spellings = read_spellings "data/spelling-corrections.txt" in
   let mappings: (string * string) list = List.concat_map (fun (c, ms) -> List.map (fun m -> (m, c)) ms) spellings

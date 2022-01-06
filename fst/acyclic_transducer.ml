@@ -21,7 +21,7 @@ let remainder s1 s2 =
 
 let concat s1 s2 = s1 ^ s2
 
-module Make (Fst_builder: Fst.S) = struct
+module Make (Fst: Fst.S) = struct
 open Fst
 let find_minimized state =
   let* r = member state in

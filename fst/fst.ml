@@ -3,19 +3,32 @@
 module type S = sig
   type 'a t
   type state
+  type transducer
 
   module Output_set: sig
+   type elt = string
    type t
+   val empty : t
+   val singleton: elt -> t
+   val map : (elt -> elt) -> t -> t
+   val to_seq : t -> elt Seq.t
+   val mem : elt -> t -> bool
+   val add : elt -> t -> t
   end
+  val string_of_output_set: Output_set.t -> String.t
 
   val bind: 'a t -> ('a -> 'b t) -> 'b t
   val (let*): 'a t -> ('a -> 'b t) -> 'b t
   val return: 'a -> 'a t
   val fold_left: ('a -> 'b -> 'a t) -> 'a t -> 'b list -> 'a t
   val cond: bool t -> if_true:(unit -> 'a t) -> if_false:(unit -> 'a t) -> 'a t
-
+  val (>>|): 'a t -> ('a -> 'b) -> 'b t
+  val (>>=): 'a t -> ('a -> 'b t) -> 'b t
   val run: Char.t -> Char.t -> 'a t -> 'a
+
   val create_state: state t
+
+  val make: Char.t -> Char.t -> transducer
 
   val final: state -> Bool.t t
   val set_final: state -> bool -> unit t
@@ -42,9 +55,13 @@ module type S = sig
 
   val debug: unit t
   val accept: string -> state -> Output_set.t t
+
+  val all: 'a t list -> 'a list t
+
+  val state_to_int: state -> int
 end
 
-module Make(Output: Output.S) = struct
+module Make(Output: Output.S): S = struct
 
 module Output_set = Set.Make(String)
 let string_of_output_set s = Printf.sprintf "String_set [%s]" (Output_set.to_seq s |> List.of_seq |>String.concat "; ")
@@ -95,7 +112,7 @@ let make first_char last_char =
     dictionary = [];
   }
 
-let show_dictionary { dictionary; _} = (String.concat ", " (List.map (fun n -> Printf.sprintf "%d" n) dictionary))
+(*let show_dictionary { dictionary; _} = (String.concat ", " (List.map (fun n -> Printf.sprintf "%d" n) dictionary))*)
 
 let bind m f t = let (a, t) = (m t) in f a t
 
@@ -104,7 +121,7 @@ let map m f t = let (a, t) = (m t) in (f a, t)
 let return a t = (a, t)
 
 let value (a, _) = a
-let st (_, state) = state
+(*let st (_, state) = state*)
 
 let (let*) = bind
 let (>>|) = map
@@ -350,6 +367,8 @@ let accept input start_state =
         loop acc next_state (i+1) in
   loop "" start_state 0
 
+
+let state_to_int state = state
 end
 
 include Make(String_output)

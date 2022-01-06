@@ -1,25 +1,9 @@
-
-
-
 let common_prefix_length s1 s2 =
  let n = Int.min (String.length s1) (String.length s2) in
  let rec loop i =
    if i = n || not (Char.equal (String.get s1 i) (String.get s2 i)) then i
    else loop (i + 1) in
  loop 0
-
-let longest_common_prefix s1 s2 =
-   let l = common_prefix_length s1 s2 in
-   String.sub s1 0 l
-
-
-(* Return what is left from the second string
-once the common prefix is removed *)
-let remainder s1 s2 =
-  let l = common_prefix_length s1 s2 in
-  String.sub s2 l (String.length s2 - l)
-
-let concat s1 s2 = s1 ^ s2
 
 module Make (Fst: Fst.S) = struct
 open Fst
@@ -67,7 +51,7 @@ let initialize_tail_states temp_states word prefix_length =
 
 let find_max_width items = List.fold_left (fun current_max (word, _) -> Int.max current_max (String.length word)) 0 items
 
-let add_to_transducer temp_states (previous_word: string) (current_word, current_output : (string * string)) : string t =
+let add_to_transducer temp_states (previous_word: string) (current_word, current_output : (string * Output.t)) : string t =
     let prefix_length = common_prefix_length previous_word current_word in
     (* Minimise the suffix of the previous word *)
      let* _ = minimize_suffix temp_states previous_word prefix_length in
@@ -76,7 +60,7 @@ let add_to_transducer temp_states (previous_word: string) (current_word, current
      (* Set last char transition of current word as final *)
      let* _  = if not (String.equal current_word previous_word) then
          let* _ = set_final temp_states.(String.length current_word) true in
-         set_state_output temp_states.(String.length current_word) (Output_set.singleton "")
+         set_state_output temp_states.(String.length current_word) (Output_set.singleton Output.empty)
        else return () in
      let rec loop i current_output = begin
        if i = String.length current_word then
@@ -86,29 +70,29 @@ let add_to_transducer temp_states (previous_word: string) (current_word, current
          let current_state = temp_states.(i) in
          let next_state = temp_states.(i+1) in
          let* existing_output = output current_state current_ch >>| Option.value ~default:current_output in
-         let common_prefix = longest_common_prefix existing_output current_output in
-         let word_suffix = remainder common_prefix existing_output in
+         let common_prefix = Output.common existing_output current_output in
+         let word_suffix = Output.subtract common_prefix existing_output in
          let* _  = set_output temp_states.(i) current_ch common_prefix in
          let* next_outputs = outputs next_state in
          let* _ = fold_left (fun _ (ch, _) ->
            let* old_output = output_str next_state ch in
-           let* _ = set_output next_state ch (concat word_suffix old_output) in
+           let* _ = set_output next_state ch (Output.add word_suffix old_output) in
            return ()
          ) (return ()) next_outputs in
          let* _ = cond (final temp_states.(i+1)) ~if_true:(fun () ->
            let* strings = state_output temp_states.(i+1) in
-           let updated_strings = Output_set.map (fun s -> concat word_suffix s) strings in
+           let updated_strings = Output_set.map (fun s -> Output.add word_suffix s) strings in
            set_state_output temp_states.(i+1) updated_strings
          ) ~if_false:(fun () -> return ()) in
-         let current_output = remainder common_prefix current_output in
+         let current_output = Output.subtract common_prefix current_output in
          loop (i + 1) current_output end in
        let* current_output = loop 0 current_output in
-       if String.length current_output > 0 then Printf.printf "Remaining output = %s\n" current_output;
+       if Output.compare current_output Output.empty <> 0 then Printf.printf "Remaining output = %s\n" (Output.to_string current_output);
        let* _ = if String.equal current_word previous_word then
          let state = temp_states.(String.length current_word) in
          let* sos = state_output state in
-         Printf.printf "current_word: %s, current_output: %s, sos: %s\n" current_word current_output
-          (Output_set.to_seq sos |> List.of_seq |> String.concat ", ");
+         Printf.printf "current_word: %s, current_output: %s, sos: %s\n" current_word (Output.to_string current_output)
+          (string_of_output_set sos);
          set_state_output state (Output_set.add current_output sos)
        else
          return () in

@@ -25,3 +25,4 @@ let common = longest_common_prefix
 let subtract = remainder
 let add = concat
 let to_string s = s
+let empty = ""

@@ -1,12 +1,12 @@
-
-
 module type S = sig
   type 'a t
   type state
   type transducer
 
+  module Output: Output.S
+
   module Output_set: sig
-   type elt = string
+   type elt = Output.t
    type t
    val empty : t
    val singleton: elt -> t
@@ -40,10 +40,10 @@ module type S = sig
   val state_output: state -> Output_set.t t
   val set_state_output: state -> Output_set.t -> unit t
 
-  val output: state -> Char.t -> String.t Option.t t
-  val outputs: state -> (Char.t * string) list t
-  val output_str: state -> Char.t -> String.t t
-  val set_output: state -> Char.t -> String.t -> unit t
+  val output: state -> Char.t -> Output.t Option.t t
+  val outputs: state -> (Char.t * Output.t) list t
+  val output_str: state -> Char.t -> Output.t t
+  val set_output: state -> Char.t -> Output.t -> unit t
 
   val copy_state: state -> state t
   val clear_state: state -> unit t
@@ -61,10 +61,12 @@ module type S = sig
   val state_to_int: state -> int
 end
 
-module Make(Output: Output.S): S = struct
+module Make(Outputs: Output.S): (S with type Output.t = Outputs.t) = struct
 
-module Output_set = Set.Make(String)
-let string_of_output_set s = Printf.sprintf "String_set [%s]" (Output_set.to_seq s |> List.of_seq |>String.concat "; ")
+module Output = Outputs
+module Output_set = Set.Make(Output)
+
+let string_of_output_set s = Printf.sprintf "String_set [%s]" (Output_set.to_seq s |> List.of_seq |> List.map Output.to_string |> String.concat "; ")
 module Int_set = Set.Make(Int)
 
 module Int_map = Map.Make(Int)
@@ -79,7 +81,7 @@ type transducer = {
   final_states: Int_set.t;
   transitions:  int Char_map.t Int_map.t;
   state_outputs: Output_set.t Int_map.t;
-  outputs: string Char_map.t Int_map.t;
+  outputs: Output.t Char_map.t Int_map.t;
   dictionary: int list
 
 }
@@ -209,7 +211,7 @@ let outputs state transducer =
 let output_str state char =
   let* o = output state char in
   return (match o with
-  | None -> ""
+  | None -> Output.empty
   | Some s -> s
   )
 
@@ -289,7 +291,7 @@ let rec compare_states state1 state2 transducer =
       let state2_outputs = Int_map.find state2 transducer.outputs in
       let outputs_1 = List.map (fun label -> Char_map.find label state1_outputs) labels in
       let outputs_2 = List.map (fun label -> Char_map.find label state2_outputs) labels in
-      let outputs_cmp = List.compare String.compare outputs_1 outputs_2 in
+      let outputs_cmp = List.compare Output.compare outputs_1 outputs_2 in
       if outputs_cmp <> 0 then
         outputs_cmp
       else
@@ -320,14 +322,14 @@ let print_transducer state filename transducer =
     visited := Int_set.add state (!visited);
     let transitions = Int_map.find state transducer.transitions  in
     let outputs = Int_map.find state transducer.outputs in
-    let state_outputs = Int_map.find state transducer.state_outputs |> Output_set.to_seq |> List.of_seq |> String.concat "," in
+    let state_outputs = Int_map.find state transducer.state_outputs |> string_of_output_set in
     let labels = transitions |> Char_map.bindings |> List.map fst in
     let node_shape = if final state transducer |> value then "doublecircle" else "circle" in
     Printf.fprintf oc "%s [label = \"%d/%s\" shape = \"%s\"]\n" (state_id state) state state_outputs node_shape;
     List.iter (fun label ->
         let to_state = Char_map.find label transitions in
         let arc_output = Char_map.find label outputs in
-        Printf.fprintf oc "%s -> %s [label = \"%c/%s\"]\n" (state_id state) (state_id to_state) label arc_output;
+        Printf.fprintf oc "%s -> %s [label = \"%c/%s\"]\n" (state_id state) (state_id to_state) label (Output.to_string arc_output);
         loop to_state
         ) labels end in
   loop state;
@@ -343,7 +345,7 @@ let debug transducer =
   Printf.printf "State Outputs:\n";
   Int_map.iter (fun state state_outputs -> Printf.printf "%d: %s\n" state (string_of_output_set state_outputs)) transducer.state_outputs;
   Printf.printf "Outputs:\n";
-  Int_map.iter (fun state transitions -> Printf.printf "%d: %s\n" state (Char_map.to_seq transitions |> List.of_seq |> List.map (fun (c, s) -> Printf.sprintf "%c->%s" c s) |> String.concat ", ")) transducer.outputs;
+  Int_map.iter (fun state transitions -> Printf.printf "%d: %s\n" state (Char_map.to_seq transitions |> List.of_seq |> List.map (fun (c, s) -> Printf.sprintf "%c->%s" c (Output.to_string s)) |> String.concat ", ")) transducer.outputs;
   Printf.printf "Dictionary:\n %s\n\n" (List.map string_of_int transducer.dictionary |> String.concat ", ");
   ((), transducer)
 
@@ -353,7 +355,7 @@ let accept input start_state =
       let* is_final = final state in
       let* so = state_output state in
       if is_final then
-         return (Output_set.map (fun o -> acc ^ o) so)
+         return (Output_set.map (fun o -> Output.add acc o) so)
       else
          return Output_set.empty
     else
@@ -363,9 +365,9 @@ let accept input start_state =
       | None -> return Output_set.empty
       | Some next_state ->
         let* current_output = output_str state ch in
-        let acc = String.concat "" [acc; current_output] in
+        let acc = Output.add acc current_output in
         loop acc next_state (i+1) in
-  loop "" start_state 0
+  loop Output.empty start_state 0
 
 
 let state_to_int state = state

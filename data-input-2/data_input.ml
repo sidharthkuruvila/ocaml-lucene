@@ -1,9 +1,9 @@
 module type S = sig
   type t
 
-  val read_byte : t -> int
+  val read_byte : t -> char
   val read_bytes : t -> int -> string
-  val get_byte : t -> int -> int
+  val get_byte : t -> int -> char
   val skip_bytes : t -> int -> unit
 
   val get_position : t -> int
@@ -11,20 +11,16 @@ module type S = sig
   val copy: t -> t
 
   val read_int : t -> int
-  val read_long : t -> Int64.t
-  val read_vlong : t -> Int64.t
+  val read_long : t -> int
+  val read_vlong : t -> int
   val read_vint : t -> int
-  val read_uint: t -> int
   val read_string: t -> String.t
   val read_list_of_strings: t -> string list
   val read_assoc_list_of_strings: t -> (string * string) list
-  val read_le_int64 : t -> Int64.t
 end
 
 module Make(M : Bytes_source.S) = struct
-  open M
-  let read_byte_as_int di = int_of_char (read_byte di)
-
+  include M
 
   let read_int di =
     let open Int32 in
@@ -58,8 +54,10 @@ module Make(M : Bytes_source.S) = struct
   *)
   let read_vlong di =
     let open Int64 in
+    let read_byte di =
+      read_byte di |> int_of_char |> of_int in
     let rec loop acc shift =
-      let b = of_int (read_byte_as_int di) in
+      let b = read_byte di in
       let d = logand b (of_int 127) in
       let n = logor acc (shift_left d shift) in
       if d = b then
@@ -81,18 +79,6 @@ module Make(M : Bytes_source.S) = struct
       else loop n (shift + 7) in
     let n = loop (of_int 0) 0 in
     to_int n
-
-  let read_le_int64 di =
-    let rec loop n count =
-      if count != 8 then
-        let b = read_byte_as_int di in
-        loop (Int64.logor n (Int64.shift_left (Int64.of_int b) (count  * 8))) (count + 1)
-      else
-        n in
-    loop 0L 0
-
-  let read_uint di =
-    read_int di
 
   let read_string di =
     let sz = read_vint di in

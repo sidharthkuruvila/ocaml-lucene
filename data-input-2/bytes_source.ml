@@ -1,8 +1,9 @@
 module type S = sig
   type t
+
   val read_byte : t -> char
   val read_bytes : t -> int -> string
-  val get_byte : t -> int -> int
+  val get_byte : t -> int -> char
   val skip_bytes : t -> int -> unit
 
   val get_position : t -> int

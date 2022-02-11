@@ -1,0 +1,3 @@
+(library
+ (name lucene_data_input_2)
+ (libraries unix))

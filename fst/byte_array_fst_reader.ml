@@ -276,7 +276,8 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       if flags = arcs_for_direct_addressing then
         next_arc_using_direct_addressing label ~input
       else if flags = arcs_for_binary_search then
-        next_arc_using_binary_search label ~input
+          failwith "binary search not implemented yet"
+(*        next_arc_using_binary_search label ~input*)
       else
         next_arc_using_linear_scan label ~flags ~input
     end

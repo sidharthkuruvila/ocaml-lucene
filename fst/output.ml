@@ -1,3 +1,4 @@
+
 module type S = sig
   type t
   val compare : t -> t -> int
@@ -6,4 +7,5 @@ module type S = sig
   val add : t -> t -> t
   val to_string : t -> string
   val empty: t
+  val pp: Format.formatter -> t -> unit
 end

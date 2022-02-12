@@ -1,4 +1,4 @@
-type t = string
+type t = string [@@deriving show]
 
 let common_prefix_length s1 s2 =
  let n = Int.min (String.length s1) (String.length s2) in

@@ -4,4 +4,5 @@ let () =
     "fst", Test_fst.tests;
     "acyclic transducer", Test_acyclic_transducer.tests;
     "string output", Test_string_output.tests;
+    "byte_array_fst_reader", Test_byte_array_fst_reader.tests;
   ]

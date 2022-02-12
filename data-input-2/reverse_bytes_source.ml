@@ -1,3 +1,12 @@
+let rev_bytes bytes =
+  let n = Bytes.length bytes - 1 in
+  for i = 0 to (Bytes.length bytes - 1) / 2 do
+    let t = Bytes.get bytes i in
+    let u = Bytes.get bytes (n - i) in
+   Bytes.set bytes (n - i) t;
+   Bytes.set bytes i u
+  done
+
 module Make(M: Bytes_intf.S) = struct
   type t = {
     data: M.t;
@@ -26,6 +35,7 @@ module Make(M: Bytes_intf.S) = struct
     let bytes = Bytes.create sz in
     M.copy_bytes di.data bytes ~src_index:(di.idx - sz + 1) ~dest_index:0 ~length:sz;
     decr_idx di sz;
+    rev_bytes bytes;
     Bytes.to_string bytes
 
   let get_position di = di.idx

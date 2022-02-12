@@ -18,7 +18,7 @@ let test_read_byte () =
 let test_read_bytes () =
   let src = M.of_bytes input in
   let result = M.read_bytes src 16 in
-  let expected = " test text file." in
+  let expected = ".elif txet tset " in
   Alcotest.(check string) "Should read the string \" test text file.\"" expected result;
   let expected_position = 15 in
   let updated_position = M.get_position src in

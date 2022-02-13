@@ -7,5 +7,6 @@ module type S = sig
   val add : t -> t -> t
   val to_string : t -> string
   val empty: t
+  val is_empty: t -> bool
   val pp: Format.formatter -> t -> unit
 end

@@ -12,7 +12,7 @@ Given a prefix the fst will return a pointer to the data in the dictionary as a 
 
 ### Structure of the pointer data
 
-![Block path](block_path.png "Block path")
+![Block path](images/block-path.png "Block path")
 
 The pointer data is a byte array that can be read as a data input.
 

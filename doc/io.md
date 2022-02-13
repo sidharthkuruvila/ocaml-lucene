@@ -3,7 +3,7 @@
 ## vint
 vints are a variable length serializaiont of ints. The number of bytes required depends on its bit width. 
 
-![vint](vint.png "vint")
+![vint](images/vint.png "vint")
 
 A 7 bit number will take a single byte with the 8th bit as a flag for whether another byte is required. 
 

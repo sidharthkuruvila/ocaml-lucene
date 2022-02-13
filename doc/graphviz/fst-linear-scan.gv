@@ -1,0 +1,32 @@
+digraph G {
+  start_of_node [
+    label = "Start of node"
+  ]
+
+  pos_arc_start [
+    label = "Start of arc list"
+  ]
+
+  linear_addressing_node [
+    label = "{Linear scan node | <f0>arcs : Arc+}"
+    shape = "record"
+  ]
+
+  start_of_node -> linear_addressing_node:f0
+
+  pos_arc_start -> linear_addressing_node:f0
+
+  linear_addressing_node:f0 -> arc
+
+  arc [
+    label = "{Arc|<f0>flag_bits: byte| output: string? flag bit 4 is set | final_output: string? flag bit 5 is set|target: int? flag bits 2 and 3 are unset}"
+    shape = "record"
+  ]
+
+  arc_flag_bits [
+    label = "{Arc flag bits|{ {0 | 1 | 2 | 3 | 4 | 5}| {Is final arc | Is last arc in node | Next node follows current node | Next node is stop | Arc has output | Arc has final output }}}"
+    shape="record"
+  ]
+
+  arc:f0 -> arc_flag_bits
+}

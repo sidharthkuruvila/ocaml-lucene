@@ -25,7 +25,7 @@ digraph G {
   direct_addressing_arc:f2 -> arc
 
   arc [
-    label = "{Arc|<f0>flag_bits: byte| output: string? flag bit 4 is set | final_output: string? flag bit 5 is set|target: int? flag bits 2 and 3 are unset}"
+    label = "{Arc|<f0>flag_bits: byte| output: string? flag bit 4 is set | final_output: string? flag bit 5 is set|target: int? flag bits 2 and 3 are unset| Padding }"
     shape = "record"
   ]
 

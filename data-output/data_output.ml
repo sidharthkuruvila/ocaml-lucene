@@ -1,6 +1,8 @@
 module type S = sig
   type t
   val write_byte: t -> char -> unit
+  val length: t -> int
+  val write_bytes: t -> string -> unit
   val write_vint: t -> int -> unit
   val write_string: t -> string -> unit
 end
@@ -21,9 +23,13 @@ module Make(M: Bytes_writer.S) = struct
       end in
   loop n
 
+  let write_bytes out s =
+    String.iter (fun b -> write_byte out b) s
+
   let write_string out s =
     let length = String.length s in
     write_vint out length;
-    String.iter (fun b -> write_byte out b) s
+    write_bytes out s
+
 
 end

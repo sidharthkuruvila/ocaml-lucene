@@ -27,7 +27,9 @@ let test_write_a_vint () =
     let result = String_data_input.read_vint source in
     let test_message = Printf.sprintf "Retrieved number should be %d" expected in
     Alcotest.(check int) test_message expected result
-  ) nums
+  ) nums;
+  let buffer_length = Buffer_data_output.length buffer in
+  Alcotest.(check int) "The buffer length should be 29" 29 buffer_length
 
 
 let test_write_a_string () =
@@ -45,7 +47,9 @@ let test_write_a_string () =
     let result = String_data_input.read_string source in
     let test_message = Printf.sprintf "Retrieved string should be \"%s\"" expected in
     Alcotest.(check string) test_message expected result
-  ) strings
+  ) strings;
+  let buffer_length = Buffer_data_output.length buffer in
+  Alcotest.(check int) "The buffer length should be 13" 13 buffer_length
 
 let tests = [
   "Read a vint", `Quick, test_write_a_vint;

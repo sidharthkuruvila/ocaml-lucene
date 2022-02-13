@@ -14,7 +14,7 @@ To transition based on a label. The first step is to change the position on the 
 
 A byte is read to get the representation of outgoing arcs.
 
-There are thee representations
+There are three representations
 
 1. Direct Addressing
 2. Binary Search

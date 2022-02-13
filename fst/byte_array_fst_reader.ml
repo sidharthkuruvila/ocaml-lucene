@@ -3,6 +3,7 @@ open Lucene_data_input_2
 module Make(Data_input: Data_input.S)(Output: Output.S)
            (Output_reader: Output_reader.S with type data_input = Data_input.t and type t = Output.t) = struct
 
+  module Output = Output
 
   let arcs_for_direct_addressing = 1 lsl 6
   let arcs_for_binary_search = 1 lsl 5
@@ -33,6 +34,9 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       final_output: Output.t;
       next_arc: int option;
     } [@@deriving show]
+
+    let output t = t.output
+    let final_output t = t.final_output
   end
 
   let first_arc t =

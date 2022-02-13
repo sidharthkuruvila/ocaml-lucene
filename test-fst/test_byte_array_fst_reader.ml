@@ -33,29 +33,7 @@ module N = Data_input.Make(M)
 let test_running_an_fst () =
   let module O = Int_output_reader.Make(N) in
   let module P = Byte_array_fst_reader.Make(N)(Int_output)(O) in
-
-  let fst_match_term ~fst term =
-    let fst_reader = fst in
-    let start_arc = P.first_arc fst_reader in
-    let target_length = String.length term in
-    let rec loop prev_arc n =
-      if n = target_length then
-        [prev_arc]
-      else
-        let label = int_of_char (String.get term n) in
-        let arc_option = P.read_next_arc label ~fst_reader ~arc:prev_arc in
-        match arc_option with
-        | Some arc -> prev_arc::(loop arc (n + 1))
-        | None -> [prev_arc] in
-    let path = loop start_arc 0 in
-    path in
-
-  let rec make_output path =
-    match path with
-    | [x] -> Int_output.add x.P.Arc.output x.P.Arc.final_output
-    | x::rest ->
-        Int_output.add x.P.Arc.output (make_output rest)
-    | [] -> Int_output.empty in
+  let module Q = Byte_array_fst_reader_utils.Make(P) in
 
   let inputs = [
     "ca", 5;
@@ -75,8 +53,8 @@ let test_running_an_fst () =
   let empty_output = 0 in
   let fst = P.create ~di ~start_node ~empty_output in
   List.iter (fun (input, expected) ->
-    let path = fst_match_term ~fst input in
-    let result = make_output path in
+    let path = Q.fst_match_term ~fst input in
+    let result = Q.make_output path in
     let test_message = Printf.sprintf "Expect result %d for input \"%s\"" expected input in
     Alcotest.(check int) test_message expected result
   ) inputs
@@ -84,29 +62,7 @@ let test_running_an_fst () =
 let test_spelling_corrections () =
   let module O = String_output_reader.Make(N) in
   let module P = Byte_array_fst_reader.Make(N)(String_output)(O) in
-
-  let fst_match_term ~fst term =
-    let fst_reader = fst in
-    let start_arc = P.first_arc fst_reader in
-    let target_length = String.length term in
-    let rec loop prev_arc n =
-      if n = target_length then
-        [prev_arc]
-      else
-        let label = int_of_char (String.get term n) in
-        let arc_option = P.read_next_arc label ~fst_reader ~arc:prev_arc in
-        match arc_option with
-        | Some arc -> prev_arc::(loop arc (n + 1))
-        | None -> [prev_arc] in
-    let path = loop start_arc 0 in
-    path in
-
-  let rec make_output path =
-    match path with
-    | [x] -> String_output.add x.P.Arc.output x.P.Arc.final_output
-    | x::rest ->
-        String_output.add x.P.Arc.output (make_output rest)
-    | [] -> String_output.empty in
+  let module Q = Byte_array_fst_reader_utils.Make(P) in
 
   let bytes = read_whole_file "data/fst-2.bytes" in
   let di = M.of_bytes bytes in
@@ -114,8 +70,8 @@ let test_spelling_corrections () =
   let empty_output = "" in
   let fst = P.create ~di ~start_node ~empty_output in
   List.iter (fun (input, expected) ->
-    let path = fst_match_term ~fst input in
-    let result = make_output path in
+    let path = Q.fst_match_term ~fst input in
+    let result = Q.make_output path in
     let test_message = Printf.sprintf "Expect result %s for input \"%s\"" expected input in
     Alcotest.(check string) test_message expected result
   ) spellings

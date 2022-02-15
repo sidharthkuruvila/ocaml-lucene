@@ -36,7 +36,7 @@ There is a special case when the numbers are at most 8 bits long and they are al
 
 When not applying the special case. The ints after removing the prefixes are stored using the bit packing algorithm. the results of the algorithm are written as little endian longs.
 
-Finally the exceptions are written 1 byte for the index and one byte for the prefix.
+Finally, the exceptions are written 1 byte for the index and one byte for the prefix.
 
 ## Resources
 * [A discussion on the ocaml list about vectorization for the stringaf library](https://discuss.ocaml.org/t/some-simd-in-your-ocaml/6367)

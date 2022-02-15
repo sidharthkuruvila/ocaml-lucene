@@ -62,3 +62,17 @@ To find an arc in a linear scan node requires visiting each arc. The linear scan
 
 The linear scan node only contains arcs. The lack of direct addressing in the flag bytes signals that the byte is the flag byte of the first arc.
 
+# Laying out the graph
+
+Nodes are laid out sequentially in a depth first manner.
+
+For example the graph of nodes
+
+![A simple DAG](images/simple-dag.png "Linear Scan")
+
+Will have the layout "E", "C", "D", "B", "A". With "E" inserted at index 0 followed by "C" and so on.
+
+
+# Reversed reader
+
+The bytes of each node are reversed before being inserted. This means a special reverse reader must be employed.

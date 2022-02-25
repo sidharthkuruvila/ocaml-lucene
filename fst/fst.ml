@@ -45,11 +45,9 @@ module type S = sig
   val output_str: state -> Char.t -> Output.t t
   val set_output: state -> Char.t -> Output.t -> unit t
 
-  val copy_state: state -> state t
   val clear_state: state -> unit t
 
-  val member: state -> state option t
-  val insert: state -> unit t
+  val find_minimized: state -> state t
 
   val print_transducer: state -> String.t -> unit t
 
@@ -311,6 +309,14 @@ let member state transducer =
 
 let insert state transducer =
    ((), { transducer with dictionary = state::transducer.dictionary })
+
+let find_minimized state =
+  let* r = member state in
+  match r with
+  | None ->
+  let* copy = copy_state state in
+  let* _ = insert copy in return copy
+  | Some state -> return state
 
 let print_transducer state filename transducer =
   let visited = ref Int_set.empty in

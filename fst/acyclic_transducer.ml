@@ -7,13 +7,6 @@ let common_prefix_length s1 s2 =
 
 module Make (Fst: Fst.S) = struct
 open Fst
-let find_minimized state =
-  let* r = member state in
-  match r with
-  | None ->
-  let* copy = copy_state state in
-  let* _ = insert copy in return copy
-  | Some state -> return state
 
 let rec make_n_states n =
   if n = 0 then return []

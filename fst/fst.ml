@@ -45,8 +45,6 @@ module type S = sig
   val output_str: state -> Char.t -> Output.t t
   val set_output: state -> Char.t -> Output.t -> unit t
 
-  val clear_state: state -> unit t
-
   val find_minimized: state -> state t
 
   val print_transducer: state -> String.t -> unit t
@@ -237,24 +235,6 @@ let copy_state state transducer =
   let state_outputs = Int_map.add next_state (Int_map.find state state_outputs) state_outputs in
   let outputs = Int_map.add next_state (Int_map.find state outputs) outputs in
   (next_state, { transducer with next_state = next_state + 1; transitions; state_outputs; outputs; final_states })
-
-let clear_state state transducer=
-  let {
-    final_states;
-    transitions;
-    outputs;
-    state_outputs;
-    _
-  } = transducer in
-  ((), {
-    transducer with
-    final_states = Int_set.remove state final_states;
-    transitions = Int_map.add state Char_map.empty transitions;
-    (* TODO Should the outputs be removed, I can't see the value of keeping them
-       without the transitions *)
-    outputs = Int_map.add state Char_map.empty outputs;
-    state_outputs = Int_map.add state Output_set.empty state_outputs;
-  })
 
 (* TODO Should we pass separate copies of the transducer
    for each state

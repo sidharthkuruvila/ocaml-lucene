@@ -21,6 +21,7 @@ module type S = sig
   val (let*): 'a t -> ('a -> 'b t) -> 'b t
   val return: 'a -> 'a t
   val fold_left: ('a -> 'b -> 'a t) -> 'a t -> 'b list -> 'a t
+  val fold_right: ('a -> 'b -> 'b t) -> 'a list -> 'b t -> 'b t
   val cond: bool t -> if_true:(unit -> 'a t) -> if_false:(unit -> 'a t) -> 'a t
   val (>>|): 'a t -> ('a -> 'b) -> 'b t
   val (>>=): 'a t -> ('a -> 'b t) -> 'b t
@@ -141,6 +142,16 @@ let fold_left f init l transducer =
        let (res, transducer) = f acc x transducer in
        loop rest res transducer in
   loop l init transducer
+
+let fold_right f l init transducer =
+  let (init, transducer) = init transducer in
+  let rec loop l transducer =
+    match l with
+    | [] -> (init, transducer)
+    | x::rest ->
+       let (res, transducer) = loop rest transducer in
+       f x res transducer in
+  loop l transducer
 
 let all l=
   fold_left (fun acc a t -> let (r, t) = a t in (r :: acc, t)) (return []) l >>| List.rev

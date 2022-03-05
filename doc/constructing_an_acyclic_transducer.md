@@ -41,13 +41,22 @@ If the next word is "cab" -> "bat"
    {output = "t"; char = 'b'; from_state = { is_final = false; transitions = [{char = 't'; output = "r", target = compiled_node}]; final_output = ""} }
 ]
 ```
+## Dealing with the existing suffix
+
+The current word's suffix needs to be compiled before next word can become the current word.
+
+There are two cases to be handled
+
+## Case 1
+
+The common prefix is shorter than the length of the current word.
 
 ### Split the current word 
 
-Split the list into two parts common_prefix and compilation_candidates.
+Split the list into three parts common_prefix, common_state and compilation_candidates.
 
-In the example, the common_prefix would be the list containing char = 'c' and char = 'a'. Compilation candidates 
-would be list containing char = 't'.
+In the example, the common_prefix would be the list containing char = 'c' and char = 'a'. The common state would be
+the state containing char = 't'. The compilation candidates would be an empty list.
 
 ### Push the outputs up the common prefix
 
@@ -64,7 +73,7 @@ val push_output:  (output * temporary_state_transition list)
 
 For each temporary state transition
  * Update the transition's output to the common prefix
- * Push the suffix of the original output to from_state's transtion outputs and the final output
+ * Push the suffix of the original output to from_state's transition outputs and the final output
  * Return the suffix of the input output and append the updated transition to the input list
 
 ### Compile the suffix
@@ -81,6 +90,33 @@ let compile_temporary_state_transition temporary_state_transition compiled_next_
   compile_state from_state
 ```
 
-### Append the compiled suffix
+### Construct the compiled suffix char
+
+```ocaml
+val update_common_state_transition:  
+  remaining_output: output
+  -> common_state_transition: temporary_state_transition
+  -> compiled_suffix_state: compiled_state
+
+```
+
+* Add a transition to the from state of common_state_transition from the current char and its output to the compiled_suffix_state
+* Create a new temporary state transition with the first char of the new word's suffix and the remaining output the remaining
+
+### Fill the remaining letters of the new word's suffix
+
+Construct a list of temporary_state_transitions from the remaining letters in the new word's suffix.
+
+### Concatenate the three components
+
+This would be
+```ocaml
+updated_prefix ^^ [updated_common_state_transition] ^^ remaining_suffix
+```
+## Case 2
+
+The length of the prefix is the same as the length of the current word. This can happen when the next word
+contains the current word as a prefix. For example, cat and catamaran.
+
 
 ### Extend the current word 

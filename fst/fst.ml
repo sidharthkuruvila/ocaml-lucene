@@ -45,7 +45,7 @@ module type S = sig
   val output_str: state -> Char.t -> Output.t t
   val set_output: state -> Char.t -> Output.t -> unit t
 
-  val find_minimized: (state, Output.t) State.t -> state t
+  val compile_state: (state, Output.t) State.t -> state t
 
   val print_transducer: state -> String.t -> unit t
 
@@ -290,7 +290,7 @@ let member state transducer =
 let insert state transducer =
    ((), { transducer with dictionary = state::transducer.dictionary })
 
-let find_minimized state =
+let compile_state state =
   let* new_state = create_state in
   let* _ = set_final new_state (State.is_final state) in
   let* _ = set_state_output new_state (Output_set.singleton (State.get_final_output state ~default:Output.empty)) in

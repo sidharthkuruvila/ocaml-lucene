@@ -6,6 +6,9 @@ tricky. This document describes a simpler version of the algorithm.
 
 # Algorithm
 
+The fst exposes a method called compile_state. The logic of deduplicating states is managed by this function. Once
+a state is compiled it cannot be modified.
+
 ## Types
 
 ![Types](images/acyclic-transducer-types.png "Types used to build the acyclic transducer")
@@ -54,7 +57,9 @@ Initial value will be the next output and an empty list. The list will accumulat
 transitions in a reverse order. 
 
 ```ocaml
-val push_output:  (output * temporary_state_transition list) -> temporary_state_transition -> (output * temporary_state_transition list)
+val push_output:  (output * temporary_state_transition list)
+  -> temporary_state_transition
+  -> (output * temporary_state_transition list)
 ```
 
 For each temporary state transition
@@ -64,7 +69,17 @@ For each temporary state transition
 
 ### Compile the suffix
 
-compilation_candidates
+This can be represented as a right fold.
+
+The initial value will be a compiled empty final state.
+
+```ocaml
+
+let compile_temporary_state_transition temporary_state_transition compiled_next_state =
+  let { ch; output; from_state } = temporary_state_transition in
+  let from_state = State.set_transition from_state ch output compiled_next_state in
+  compile_state from_state
+```
 
 ### Append the compiled suffix
 

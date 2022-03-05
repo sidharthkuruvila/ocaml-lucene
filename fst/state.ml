@@ -15,6 +15,11 @@ let init = {
   final_output = None;
 }
 
+let empty_final_state ~empty_output= {
+    transitions = [];
+    final_output = Some empty_output;
+}
+
 let update_transition state transition =
   let ch = transition.ch in
   let filtered_transitions = List.filter (fun transition -> ch != transition.ch) state.transitions in

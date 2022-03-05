@@ -2,7 +2,7 @@ module type Fst_compiler = sig
   type 'a t
   type state
   module Output: Output.S
-  val find_minimized: (state, Output.t) State.t -> state t
+  val compile_state: (state, Output.t) State.t -> state t
 end
 
 module Make(Fst: Fst_compiler) = struct
@@ -24,4 +24,9 @@ module Make(Fst: Fst_compiler) = struct
      let from_state = State.update_final_output from_state ~f:(fun current_final_output -> Output.add word_suffix current_final_output) in
      let updated_transition = {temporary_state_transition with output = common_prefix; from_state } in
      (remainder, updated_transition::acc)
+
+   let compile_temporary_state_transition temporary_state_transition compiled_next_state =
+     let { ch; output; from_state } = temporary_state_transition in
+     let from_state = State.set_transition from_state ch output compiled_next_state in
+     compile_state from_state
 end

@@ -1,8 +1,8 @@
 The acyclic transducer construction described in https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.24.3698 forms
 the basis of the FST used in Lucene to search for terms in the index.
 
-The fst described by the paper adds a lot of stateful update operations that make alternate implementations of the fst.
-This document describes a simpler version of the algorithm.
+The fst described by the paper adds a lot of stateful update operations that make alternate implementations of the fst 
+tricky. This document describes a simpler version of the algorithm.
 
 # Algorithm
 
@@ -69,5 +69,3 @@ compilation_candidates
 ### Append the compiled suffix
 
 ### Extend the current word 
-
-

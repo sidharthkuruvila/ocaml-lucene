@@ -45,7 +45,7 @@ module type S = sig
   val output_str: state -> Char.t -> Output.t t
   val set_output: state -> Char.t -> Output.t -> unit t
 
-  val find_minimized: state -> state t
+  val find_minimized: (state, Output.t) State.t -> state t
 
   val print_transducer: state -> String.t -> unit t
 
@@ -291,10 +291,18 @@ let insert state transducer =
    ((), { transducer with dictionary = state::transducer.dictionary })
 
 let find_minimized state =
-  let* r = member state in
+  let* new_state = create_state in
+  let* _ = set_final new_state (State.is_final state) in
+  let* _ = set_state_output new_state (Output_set.singleton (State.get_final_output state ~default:Output.empty)) in
+  let* _ = fold_left (fun _ transition ->
+    let* _ = set_output new_state transition.State.ch transition.State.output in
+    let* _ = set_transition new_state transition.State.ch transition.State.target in
+    return ()
+  ) (return ()) state.State.transitions  in
+  let* r = member new_state in
   match r with
   | None ->
-  let* copy = copy_state state in
+  let* copy = copy_state new_state in
   let* _ = insert copy in return copy
   | Some state -> return state
 

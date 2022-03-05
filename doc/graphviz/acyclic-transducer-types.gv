@@ -1,0 +1,34 @@
+digraph {
+  current_word [
+    label = "{Current Word |
+      <f0>characters: temporary_transition list
+    }"
+    shape = "record"
+  ]
+
+  temporary_transition [
+    label = "{ Temporary Transition | char: char | output: output | <f0>from_state: uncompiled_node }"
+    shape = "record"
+  ]
+
+  uncompiled_node [
+    label = "{Uncompiled Node|is_final: bool|<f0>transitions: transition list| final_output: output }}"
+    shape = "record"
+  ]
+
+  transition [
+    label = "{Transition | char: char | output: output | <f0>target: compiled_node}"
+    shape = "record"
+  ]
+
+  compiled_node [
+    label = "Compiled"
+    shape = "circle"
+  ]
+
+  current_word:f0 -> temporary_transition
+  temporary_transition:f0 -> uncompiled_node
+  uncompiled_node:f0 -> transition
+  transition:f0 -> compiled_node
+}
+

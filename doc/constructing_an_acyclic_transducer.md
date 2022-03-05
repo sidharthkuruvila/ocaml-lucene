@@ -1,3 +1,8 @@
+The acyclic transducer construction described in https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.24.3698 forms
+the basis of the FST used in Lucene to search for terms in the index.
+
+The fst described by the paper adds a lot of stateful update operations that make alternate implementations of the fst.
+This document describes a simpler version of the algorithm.
 
 # Algorithm
 
@@ -9,8 +14,7 @@
  * current_word - The first word in the input list represented as a list of temporary state transitions
  * next_word - A list of chars representing the next word
  * next_output - An output representing the output for the next word
-
-
+ 
 ## Example
 
 If the first word is "cat" -> "bar"

@@ -117,12 +117,24 @@ Construct a list of temporary_state_transitions from the remaining letters in th
 
 This would be
 ```ocaml
-updated_prefix ^^ [updated_common_state_transition] ^^ remaining_suffix
+updated_prefix ++ [updated_common_state_transition] ++ remaining_suffix
 ```
 ## Case 2
 
 The length of the prefix is the same as the length of the current word. This can happen when the next word
 contains the current word as a prefix. For example, cat and catamaran.
 
+### Push the outputs up the common prefix
 
-### Extend the current word 
+This will be the same as for case 2
+
+### Extend the current word
+
+When creating the remaining suffix set the remaining output for the old word as the final_output of the first from_state.
+
+## Concatenate the updated prefix and the remaining suffix
+
+```ocaml
+updated_prefix ++ remaining_suffix
+```
+

@@ -64,13 +64,24 @@ module Make(Fst: Fst.S) = struct
     let remaining_suffix = make_word remaining_next_input Output.empty None in
     return (List.concat [updated_prefix; [updated_common_state_transition]; remaining_suffix])
 
+  let add_word_when_prefix_equal prefix last_state_transition remaining_next_input next_output =
+    let (remaining_output, old_output, rev_updated_prefix) = List.fold_left push_output (next_output, Output.empty, []) prefix in
+    let updated_prefix = List.rev rev_updated_prefix in
+    let final_output = Output.add old_output last_state_transition.output in
+    let last_state_transition = { last_state_transition with output = remaining_output } in
+    let remaining_suffix = make_word remaining_next_input Output.empty (Some final_output) in
+    return (List.concat [updated_prefix; [last_state_transition]; remaining_suffix])
+
   let add_word current_word next_input next_output =
     let current_word_letters = List.map (fun {ch; _} -> ch) current_word in
     let next_word_letters = String.to_seq next_input |> List.of_seq in
     let prefix_length = Lists.common_prefix_length current_word_letters next_word_letters ~compare:Char.compare in
     let (common_prefix, rest) = Lists.split_at_index current_word ~index:prefix_length in
     if List.length current_word = prefix_length then
-      failwith "Not implemented yet"
+      let remaining_next_input = String.sub next_input prefix_length (String.length next_input - prefix_length) in
+      (* Our expectation is that there is at least one state transition in the current_word *)
+      let [@warning "-8"] (prefix, [last_state_transition]) = Lists.split_at_index current_word ~index:(prefix_length - 1) in
+      add_word_when_prefix_equal prefix last_state_transition remaining_next_input next_output
     else
       (* As the common prefix is shorter than current words rest should have at least one item *)
       let [@warning "-8"] common_state::compilation_candidates = rest in

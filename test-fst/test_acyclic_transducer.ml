@@ -92,10 +92,35 @@ let test_add_word_when_common_prefix_shorter_than_current_word () =
     return ()
   )
 
+let test_add_word_when_common_prefix_is_same_as_current_word () =
+  let module Fst = Fst.Make(String_output) in
+  let open Fst in
+  let module Builder = Acyclic_transducer.Make(Fst) in
+  let current_word = [
+    { Builder.output = "o1"; ch = 'c'; from_state = { transitions = []; final_output = None } };
+    { Builder.output = "o2"; ch = 'a'; from_state = { transitions = []; final_output = None } };
+    { Builder.output = "o3"; ch = 't'; from_state = { transitions = []; final_output = None } };
+  ] in
+  let next_word = "cats" in
+  let next_output = "o1o3o4" in
+  let run_fst code = ignore (Fst.run 'a' 'b' code) in
+  run_fst (
+    let* updated_current_word = Builder.add_word current_word next_word next_output in
+    let current_word_string = List.map (fun t -> t.Builder.ch) updated_current_word |> List.to_seq |> String.of_seq in
+    let current_word_output = List.map (fun t -> t.Builder.output) updated_current_word  in
+    Alcotest.(check string) "The updated word should match the next word string" next_word current_word_string;
+    Alcotest.(check (list string)) "The updated word output should the next output" ["o1"; "o"; "3o4"; ""] current_word_output;
+    let [@warning "-8"] [_; _; _; temporary_state_transition] = updated_current_word in
+    let pushed_output = State.get_final_output temporary_state_transition.Builder.from_state ~default:"output not found" in
+    Alcotest.(check string) "The suffix of the output for the char that diverged should in the final output"
+      "2o3" pushed_output;
+    return ()
+  )
 let tests = [
   "Push the output through a temporary transition", `Quick, test_push_output;
   "Compile temporary state transitions", `Quick, test_compile_temporary_state_transition;
   "Update the common state transition", `Quick, test_update_common_state_transition;
   "Convert the input into a list of temporary state transitions", `Quick, test_make_word;
   "Add a word when the common prefix is shorter than the current word", `Quick, test_add_word_when_common_prefix_shorter_than_current_word;
+  "Add a word when the common prefix is the same as the current word", `Quick, test_add_word_when_common_prefix_is_same_as_current_word;
 ]

@@ -124,17 +124,26 @@ updated_prefix ++ [updated_common_state_transition] ++ remaining_suffix
 The length of the prefix is the same as the length of the current word. This can happen when the next word
 contains the current word as a prefix. For example, cat and catamaran.
 
-### Push the outputs up the common prefix
+### Split the current word
+
+The current word can be split into a prefix and the last state transition.
+
+### Push the outputs up the prefix
 
 This will be the same as for case 2
 
+#Update the last state transition
+
+* Add the remaining output for the old word and the output of the last state transition as the final output
+* Update the output to be the remaining output of the new word.
+
 ### Extend the current word
 
-When creating the remaining suffix set the remaining output for the old word as the final_output of the first from_state.
+When creating the remaining suffix set the final_output of the first from_state.
 
 ## Concatenate the updated prefix and the remaining suffix
 
 ```ocaml
-updated_prefix ++ remaining_suffix
+updated_prefix ++ [updated_last_state_transition] ++ remaining_suffix
 ```
 

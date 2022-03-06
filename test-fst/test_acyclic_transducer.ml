@@ -67,6 +67,15 @@ let test_make_word () =
   Alcotest.(check string) "The first transition of the word should containg the output" result_output output;
   Alcotest.(check string) "The final output should be set" "final_output" result_final_output
 
+let test_make_word_empty_input_word () =
+  let module Fst = Fst.Make(String_output) in
+  let module Builder = Acyclic_transducer.Make(Fst) in
+  let input = "" in
+  let output = "output_word" in
+  let final_output = (Some "final_output") in
+  let word = Builder.make_word input output final_output in
+  Alcotest.(check int) "The length of the word should be 0" 0 (List.length word)
+
 let test_add_word_when_common_prefix_shorter_than_current_word () =
   let module Fst = Fst.Make(String_output) in
   let open Fst in
@@ -80,7 +89,7 @@ let test_add_word_when_common_prefix_shorter_than_current_word () =
   let next_output = "o1o3o4" in
   let run_fst code = ignore (Fst.run 'a' 'b' code) in
   run_fst (
-    let* updated_current_word = Builder.add_word current_word next_word next_output in
+    let* updated_current_word = Builder.add_word current_word (next_word, next_output) in
     let current_word_string = List.map (fun t -> t.Builder.ch) updated_current_word |> List.to_seq |> String.of_seq in
     let current_word_output = List.map (fun t -> t.Builder.output) updated_current_word  in
     Alcotest.(check string) "The updated word should match the next word string" next_word current_word_string;
@@ -105,7 +114,7 @@ let test_add_word_when_common_prefix_is_same_as_current_word () =
   let next_output = "o1o3o4" in
   let run_fst code = ignore (Fst.run 'a' 'b' code) in
   run_fst (
-    let* updated_current_word = Builder.add_word current_word next_word next_output in
+    let* updated_current_word = Builder.add_word current_word (next_word, next_output) in
     let current_word_string = List.map (fun t -> t.Builder.ch) updated_current_word |> List.to_seq |> String.of_seq in
     let current_word_output = List.map (fun t -> t.Builder.output) updated_current_word  in
     Alcotest.(check string) "The updated word should match the next word string" next_word current_word_string;
@@ -116,11 +125,50 @@ let test_add_word_when_common_prefix_is_same_as_current_word () =
       "2o3" pushed_output;
     return ()
   )
+
+let test_create_minimal_transducer test_name items =
+  let module Fst = Fst.Make(String_output) in
+  let open Fst in
+  let module Builder = Acyclic_transducer.Make(Fst) in
+  let items = items |> List.sort (fun (a,_) (b, _) -> String.compare a b) in
+  ignore (
+     Fst.run 'a' 'z' (
+     let* start_state = Builder.create_minimal_transducer items in
+     let* _ = Fst.print_transducer start_state "out.dot" in
+     let* results = Fst.fold_left (fun acc (i, o) -> let* res = Fst.accept i start_state in return ((i, res, o) :: acc)) (return []) items in
+     List.iter (fun (i, res, o) ->
+       let contained = Fst.Output_set.mem o res in
+       Alcotest.(check bool) (Printf.sprintf "%s: Expected %s for input %s got %s" test_name o i (Fst.string_of_output_set res)) true contained) results;
+     return ()))
+
+let tests = [
+  "Different outputs", ["ca", "bat"; "cc", "bar"];
+  "More words", [
+      "ca", "bat";
+      "cat", "bat";
+      "car", "bat";
+      "co", "bat";
+      "dog", "bar"];
+  (*Not supported right now *)
+  (*"Duplicate words ", [
+        "ca", "bat";
+        "cat", "bat";
+        "cat", "bar";
+        "car", "bat";
+        "co", "bat";
+        "dog", "bar"];*)
+]
+
+let test_create_minimal_transducers () =
+  List.iter (fun (test_name, items) -> test_create_minimal_transducer test_name items) tests
+
 let tests = [
   "Push the output through a temporary transition", `Quick, test_push_output;
   "Compile temporary state transitions", `Quick, test_compile_temporary_state_transition;
   "Update the common state transition", `Quick, test_update_common_state_transition;
   "Convert the input into a list of temporary state transitions", `Quick, test_make_word;
+  "Converting an empty list should return an empty list", `Quick, test_make_word_empty_input_word;
   "Add a word when the common prefix is shorter than the current word", `Quick, test_add_word_when_common_prefix_shorter_than_current_word;
   "Add a word when the common prefix is the same as the current word", `Quick, test_add_word_when_common_prefix_is_same_as_current_word;
+  "Construct a minimal transducer", `Quick, test_create_minimal_transducers;
 ]

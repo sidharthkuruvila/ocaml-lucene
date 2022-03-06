@@ -58,11 +58,14 @@ let test_make_word () =
   let module Builder = Acyclic_transducer.Make(Fst) in
   let input = "input_word" in
   let output = "output_word" in
-  let word = Builder.make_word input output in
+  let final_output = (Some "final_output") in
+  let word = Builder.make_word input output final_output in
   let result_input = List.map (fun t -> t.Builder.ch) word |> List.to_seq |> String.of_seq in
   let result_output = (List.hd word).output in
+  let result_final_output = State.get_final_output (List.hd word).from_state ~default:"incorrect output" in
   Alcotest.(check string) "The letters in constructed word should be those of the input" result_input input;
-  Alcotest.(check string) "The first transition of the word should containg the output" result_output output
+  Alcotest.(check string) "The first transition of the word should containg the output" result_output output;
+  Alcotest.(check string) "The final output should be set" "final_output" result_final_output
 
 let test_add_word_when_common_prefix_shorter_than_current_word () =
   let module Fst = Fst.Make(String_output) in

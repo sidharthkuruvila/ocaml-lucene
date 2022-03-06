@@ -35,7 +35,7 @@ module Make(Fst: Fst.S) = struct
     let from_state = State.set_transition from_state ch (Output.add old_output output) compiled_suffix_state in
     { ch = new_char; output = remaining_output; from_state }
 
-  let make_word word output =
+  let make_word word output final_output =
     let n = String.length word in
     let rec loop i =
       if i = n then
@@ -47,8 +47,10 @@ module Make(Fst: Fst.S) = struct
         } in
         temporary_state_transition::loop (i+1) in
     let first_char = String.get word 0 in
+    let from_state = State.init in
+    let from_state =  Option.map (State.set_final_output from_state) final_output |> Option.value ~default:from_state in
     let first_temporary_state_transition = {
-      ch = first_char; output = output; from_state = State.init
+      ch = first_char; output = output; from_state
     } in
     let remaining_temporary_state_transitions = loop 1 in
     first_temporary_state_transition::remaining_temporary_state_transitions
@@ -59,7 +61,7 @@ module Make(Fst: Fst.S) = struct
     let* empty_compiled_state = State.empty_final_state ~empty_output:Output.empty |> Fst.compile_state in
     let* compiled_suffix_state = Fst.fold_right compile_temporary_state_transition compilation_candidates (return empty_compiled_state) in
     let updated_common_state_transition = update_common_state_transition common_state_transition new_char remaining_output old_output compiled_suffix_state in
-    let remaining_suffix = make_word remaining_next_input Output.empty in
+    let remaining_suffix = make_word remaining_next_input Output.empty None in
     return (List.concat [updated_prefix; [updated_common_state_transition]; remaining_suffix])
 
   let add_word current_word next_input next_output =

@@ -62,19 +62,23 @@ the state containing char = 't'. The compilation candidates would be an empty li
 
 This can be represented as a left fold
 
-Initial value will be the next output and an empty list. The list will accumulate the updated temporary state 
-transitions in a reverse order. 
+Initial value will be the next outputs and an empty list. The list will accumulate the updated temporary state
+transitions in a reverse order.
+
+Two outputs need to be tracked. The first one is the remainder from the new word being added and the second is 
+the remainder for original word.
 
 ```ocaml
-val push_output:  (output * temporary_state_transition list)
+val push_output:  (output * output * temporary_state_transition list)
   -> temporary_state_transition
-  -> (output * temporary_state_transition list)
+  -> (output * output * temporary_state_transition list)
 ```
 
 For each temporary state transition
- * Update the transition's output to the common prefix
+ * Update the transition's output by adding in the remaining output of the original word
+ * Find the common prefix of the transition's output and the remaining output of the new word
  * Push the suffix of the original output to from_state's transition outputs and the final output
- * Return the suffix of the input output and append the updated transition to the input list
+ * Return the suffix of the new word's output, the suffix of the original output and append the updated transition to the input list
 
 ### Compile the suffix
 
@@ -94,13 +98,15 @@ let compile_temporary_state_transition temporary_state_transition compiled_next_
 
 ```ocaml
 val update_common_state_transition:  
-  remaining_output: output
+  remaining_new_output: output
+  -> remainig_old_output: output
   -> common_state_transition: temporary_state_transition
   -> compiled_suffix_state: compiled_state
 
 ```
 
-* Add a transition to the from state of common_state_transition from the current char and its output to the compiled_suffix_state
+* Add the remaining_old_output and the current output in the temporary_state_transition
+* Add a transition to the from state of common_state_transition from the current char and the previously combined output to the compiled_suffix_state
 * Create a new temporary state transition with the first char of the new word's suffix and the remaining output the remaining
 
 ### Fill the remaining letters of the new word's suffix

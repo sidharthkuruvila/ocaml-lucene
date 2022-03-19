@@ -118,11 +118,33 @@ let test_add_word_when_common_prefix_is_same_as_current_word () =
     let current_word_string = List.map (fun t -> t.Builder.ch) updated_current_word |> List.to_seq |> String.of_seq in
     let current_word_output = List.map (fun t -> t.Builder.output) updated_current_word  in
     Alcotest.(check string) "The updated word should match the next word string" next_word current_word_string;
-    Alcotest.(check (list string)) "The updated word output should the next output" ["o1"; "o"; "3o4"; ""] current_word_output;
+    Alcotest.(check (list string)) "The updated word output should the next output" ["o1"; "o"; ""; "3o4"] current_word_output;
     let [@warning "-8"] [_; _; _; temporary_state_transition] = updated_current_word in
     let pushed_output = State.get_final_output temporary_state_transition.Builder.from_state ~default:"output not found" in
     Alcotest.(check string) "The suffix of the output for the char that diverged should in the final output"
       "2o3" pushed_output;
+    return ()
+  )
+
+let test_add_word_when_common_prefix_shorter_than_current_word_2 () =
+  let module Fst = Fst.Make(String_output) in
+  let open Fst in
+  let module Builder = Acyclic_transducer.Make(Fst) in
+  let current_word = Builder.make_word "c" "c" None in
+  let next_word = "ca" in
+  let next_output = "ca" in
+  let next_output_list = ["c";"a"] in
+  let run_fst code = ignore (Fst.run 'a' 'b' code) in
+  run_fst (
+    let* updated_current_word = Builder.add_word current_word (next_word, next_output) in
+    let current_word_string = List.map (fun t -> t.Builder.ch) updated_current_word |> List.to_seq |> String.of_seq in
+    let current_word_output = List.map (fun t -> t.Builder.output) updated_current_word  in
+    Alcotest.(check string) "The updated word should match the next word string" next_word current_word_string;
+    Alcotest.(check (list string)) "The updated word output should the next output" next_output_list current_word_output;
+    let [@warning "-8"] [_; temporary_state_transition] = updated_current_word in
+    let pushed_output = State.get_final_output temporary_state_transition.Builder.from_state ~default:"output not found" in
+    Alcotest.(check string) "The suffix of the output for the char that diverged should not have a final output"
+      "" pushed_output;
     return ()
   )
 
@@ -144,11 +166,20 @@ let test_create_minimal_transducer test_name items =
 let tests = [
   "Different outputs", ["ca", "bat"; "cc", "bar"];
   "More words", [
-      "ca", "bat";
-      "cat", "bat";
-      "car", "bat";
-      "co", "bat";
-      "dog", "bar"];
+    "ca", "bat";
+    "cat", "bat";
+    "car", "bat";
+    "co", "bat";
+    "dog", "bar"];
+  "More words", [
+    "c", "c";
+    "ca", "ca";
+  ];
+  "Output prefixes should not get copied across inputs", [
+    "Apenines", "Apennines";
+    "Bernouilli", "Bernoulli";
+    "Blitzkreig", "Blitzkrieg";
+  ];
   (*Not supported right now *)
   (*"Duplicate words ", [
         "ca", "bat";
@@ -162,6 +193,50 @@ let tests = [
 let test_create_minimal_transducers () =
   List.iter (fun (test_name, items) -> test_create_minimal_transducer test_name items) tests
 
+(* The following test loads a larger list of inputs *)
+
+let read_lines filename =
+  let chin = open_in filename in
+  let rec loop () =
+    try
+      let line = input_line chin in
+        line :: loop ()
+      with
+      | End_of_file -> [] in
+  loop ()
+
+let read_spellings filename : (string * (string list)) list =
+  let lines = read_lines filename in
+  let rec loop i l : (string * string list) list =
+   match (i, l) with
+   | (word::rest, _) when String.get word 0 = '$' ->
+   let correct_spelling = String.sub word 1 (String.length word - 1) in
+         loop rest ((correct_spelling, [])::l)
+   | (word::rest, []) ->
+      let correct_spelling = String.sub word 1 (String.length word - 1) in
+      loop rest ((correct_spelling, [])::l)
+   | (word::rest, (correct_spelling, misspellings)::rest_l) ->
+      loop rest ((correct_spelling, word::misspellings)::rest_l)
+   | ([], _) -> l in
+  loop lines []
+
+let test_spellings () =
+  let module Fst = Fst.Make(String_output) in
+  let open Fst in
+  let module Builder = Acyclic_transducer.Make(Fst) in
+  let spellings = read_spellings "data/wikipedia.txt" in
+  let mappings: (string * string) list = List.concat_map (fun (c, ms) -> List.map (fun m -> (m, c)) ms) spellings
+    |> List.sort (fun (a, _) (b, _) -> String.compare a b) in
+    ignore (
+  Fst.run 'a' 'z' (
+       let* start_state = Builder.create_minimal_transducer  mappings in
+       let* _ = Fst.print_transducer start_state "out.dot" in
+       let* results = Fst.fold_left (fun acc (i, o) -> let* res = Fst.accept i start_state in return ((i, res, o) :: acc)) (return []) mappings in
+       List.iter (fun (i, res, o) ->
+         let contained = Fst.Output_set.mem o res in
+                Alcotest.(check bool) (Printf.sprintf "Expected %s for input %s got %s" o i (Fst.string_of_output_set res)) true contained) (List.rev results);
+       return ()))
+
 let tests = [
   "Push the output through a temporary transition", `Quick, test_push_output;
   "Compile temporary state transitions", `Quick, test_compile_temporary_state_transition;
@@ -169,6 +244,8 @@ let tests = [
   "Convert the input into a list of temporary state transitions", `Quick, test_make_word;
   "Converting an empty list should return an empty list", `Quick, test_make_word_empty_input_word;
   "Add a word when the common prefix is shorter than the current word", `Quick, test_add_word_when_common_prefix_shorter_than_current_word;
+  "Add a word when the common prefix is shorter than the current word 2", `Quick, test_add_word_when_common_prefix_shorter_than_current_word_2;
   "Add a word when the common prefix is the same as the current word", `Quick, test_add_word_when_common_prefix_is_same_as_current_word;
   "Construct a minimal transducer", `Quick, test_create_minimal_transducers;
+  "Test against a spellings dictionary", `Quick, test_spellings;
 ]

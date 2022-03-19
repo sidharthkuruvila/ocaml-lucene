@@ -19,8 +19,6 @@ module Make(Fst: Fst.S) = struct
      let word_suffix = Output.subtract common_prefix existing_output in
      let remainder = Output.subtract common_prefix current_output in
      let from_state = temporary_state_transition.from_state in
-     let from_state = State.update_transitions from_state ~f:(fun transition ->
-      { transition with State.output = (Output.add word_suffix transition.State.output) }) in
      let from_state = State.update_final_output from_state ~f:(fun current_final_output -> Output.add word_suffix current_final_output) in
      let updated_transition = {temporary_state_transition with output = common_prefix; from_state } in
      (remainder, word_suffix, updated_transition::acc)
@@ -69,9 +67,13 @@ module Make(Fst: Fst.S) = struct
   let add_word_when_prefix_equal prefix last_state_transition remaining_next_input next_output =
     let (remaining_output, old_output, rev_updated_prefix) = List.fold_left push_output (next_output, Output.empty, []) prefix in
     let updated_prefix = List.rev rev_updated_prefix in
-    let final_output = Output.add old_output last_state_transition.output in
-    let last_state_transition = { last_state_transition with output = remaining_output } in
-    let remaining_suffix = make_word remaining_next_input Output.empty (Some final_output) in
+    let existing_output = Output.add old_output last_state_transition.output in
+    let common_prefix = Output.common remaining_output existing_output in
+    let remaining_output = Output.subtract common_prefix remaining_output in
+    let remaining_old_output = Output.subtract common_prefix existing_output in
+    let last_state_transition = { last_state_transition with
+      output = common_prefix} in
+    let remaining_suffix = make_word remaining_next_input remaining_output (Some remaining_old_output) in
     return (List.concat [updated_prefix; [last_state_transition]; remaining_suffix])
 
   let add_word current_word (next_input, next_output) =

@@ -184,7 +184,12 @@ let tests = [
     "Ceasar", "Caesar";
     "Cambrige", "Cambridge";
     "Celcius", "Celsius";
-  ]
+  ];
+  "All transitions of the common state transtion should be updated", [
+    "Galations", "Galatians";
+    "Ghandi", "Gandhi";
+    "Guatamala", "Guatamala";
+  ];
   (*Not supported right now *)
   (*"Duplicate words ", [
         "ca", "bat";

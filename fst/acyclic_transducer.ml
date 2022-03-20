@@ -5,7 +5,7 @@ module type Fst_compiler = sig
   val compile_state: (state, Output.t) State.t -> state t
 end
 
-module Make(Fst: Fst.S) = struct
+module Make(Fst: Fst_compiler.S) = struct
    open Fst
    type temporary_transition = {
      ch: char;

@@ -6,4 +6,5 @@ let () =
     "String output", Test_string_output.tests;
     "Byte array fst reader", Test_byte_array_fst_reader.tests;
     "Byte array fst writer", Test_byte_array_fst_writer.tests;
+    "Working with lists", Test_lists.tests;
   ]

@@ -7,7 +7,12 @@ let test_remainder () : unit =
     Alcotest.(check string) "Remainder should be a suffix of the second input" result expected) inputs
 
 let test_common (): unit =
-  let inputs = ["", "", ""; "ab", "abc", "ab"; "abc", "ab", "ab"; "ca", "co", "c"] in
+  let inputs = [
+    "", "", "";
+    "ab", "abc", "ab";
+    "abc", "ab", "ab";
+    "ca", "co", "c";
+    "ca", "c", "c"] in
   List.iter (fun (s1, s2, expected) ->
     let result = String_output.common s1 s2 in
     Alcotest.(check string) "Prefix length should be correct" result expected) inputs

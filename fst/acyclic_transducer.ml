@@ -15,10 +15,12 @@ module Make(Fst: Fst.S) = struct
 
    let push_output (current_output, old_output, acc) temporary_state_transition =
      let existing_output = Output.add old_output temporary_state_transition.output in
-     let common_prefix = Output.common current_output temporary_state_transition.output in
+     let common_prefix = Output.common current_output existing_output in
      let word_suffix = Output.subtract common_prefix existing_output in
      let remainder = Output.subtract common_prefix current_output in
      let from_state = temporary_state_transition.from_state in
+     let from_state = State.update_transitions from_state ~f:(fun transition ->
+            { transition with State.output = (Output.add old_output transition.State.output) }) in
      let from_state = State.update_final_output from_state ~f:(fun current_final_output -> Output.add word_suffix current_final_output) in
      let updated_transition = {temporary_state_transition with output = common_prefix; from_state } in
      (remainder, word_suffix, updated_transition::acc)

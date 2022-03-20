@@ -180,6 +180,11 @@ let tests = [
     "Bernouilli", "Bernoulli";
     "Blitzkreig", "Blitzkrieg";
   ];
+  "Common output prefixes should get matched", [
+    "Ceasar", "Caesar";
+    "Cambrige", "Cambridge";
+    "Celcius", "Celsius";
+  ]
   (*Not supported right now *)
   (*"Duplicate words ", [
         "ca", "bat";

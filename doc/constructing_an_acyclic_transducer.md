@@ -14,7 +14,9 @@ a state is compiled it cannot be modified.
 ![Types](images/acyclic-transducer-types.png "Types used to build the acyclic transducer")
 
 ## Initial state
- * current_word - The first word in the input list represented as a list of temporary state transitions
+ * temporary_transitions - The first word in the input list represented as a list of temporary state transitions the
+   first word's out will be found in the first element of the list. This is the representation of the current word
+   being processed.
  * next_word - A list of chars representing the next word
  * next_output - An output representing the output for the next word
  
@@ -22,23 +24,23 @@ a state is compiled it cannot be modified.
 
 If the first word is "cat" -> "bar"
 
-current word will be
+temporary_transitions will be
 
 ```ocaml
  [
-   {output = "bar"; char = 'c'; from_state = { is_final = false; transitions = []; final_output = ""} }
-   {output = ""; char = 'a'; from_state = { is_final = false; transitions = []; final_output = ""} }
-   {output = ""; char = 't'; from_state = { is_final = false; transitions = []; final_output = ""} }
+   {output = "bar"; char = 'c'; from_state = { transitions = []; final_output = None } }
+   {output = ""; char = 'a'; from_state = { transitions = []; final_output = None } }
+   {output = ""; char = 't'; from_state = { transitions = []; final_output = Some "" } }
  ]
 ```
 
-If the next word is "cab" -> "bat"
+If the next word is "cab" -> "bat", temporary_transitions will be updated to
 
 ```ocaml
  [
-   {output = "ba"; char = 'c'; from_state = { is_final = false; transitions = []; final_output = ""} }
-   {output = ""; char = 'a'; from_state = { is_final = false; transitions = []; final_output = ""} }
-   {output = "t"; char = 'b'; from_state = { is_final = false; transitions = [{char = 't'; output = "r", target = compiled_node}]; final_output = ""} }
+   {output = "ba"; char = 'c'; from_state = { transitions = []; final_output = None } }
+   {output = ""; char = 'a'; from_state = { transitions = []; final_output = None } }
+   {output = "t"; char = 'b'; from_state = { transitions = [{char = 't'; output = "r", target = compiled_node}]; final_output = Some "" } }
 ]
 ```
 ## Dealing with the existing suffix
@@ -60,25 +62,28 @@ the state containing char = 't'. The compilation candidates would be an empty li
 
 ### Push the outputs up the common prefix
 
-This can be represented as a left fold
+This can be represented as a left fold using the tuple (output * output) and a list to accumulate updated transitions.
 
-Initial value will be the next outputs and an empty list. The list will accumulate the updated temporary state
-transitions in a reverse order.
+The first output is what ever is left over from the output of the new word being added, from previous applications
+of the function. The second output is the output accumulated from previous transitions as a remainder.
 
-Two outputs need to be tracked. The first one is the remainder from the new word being added and the second is 
-the remainder for original word.
+The input to the fold will be (new_output, empty_output) and an empty list. As this is a fold left, the list will
+accumulate the updated temporary state transitions in a reverse order.
+
 
 ```ocaml
-val push_output:  (output * output * temporary_state_transition list)
-  -> temporary_state_transition
-  -> (output * output * temporary_state_transition list)
+val push_output: (new_output: output * old_output: output)
+  -> transition: temporary_state_transition
+  -> (remaining_new_output: output * remaining_old_output * updated_transition: temporary_state_transition)
 ```
 
-For each temporary state transition
- * Update the transition's output by adding in the remaining output of the original word
- * Find the common prefix of the transition's output and the remaining output of the new word
- * Push the suffix of the original output to from_state's transition outputs and the final output
- * Return the suffix of the new word's output, the suffix of the original output and append the updated transition to the input list
+#### Invariants
+
+ * new_output + transition.output = updated_transition.output + remaining_new_output
+ * old_output + transition.output = updated_transition.output + remaining_old_output
+ * for all transitions in the from state as ft_transition and ft_updated_transition
+   * old_output  + ft_transition = ft_updated_transition
+ * old_output + final_output = updated_final_output
 
 ### Compile the suffix
 
@@ -94,20 +99,20 @@ let compile_temporary_state_transition temporary_state_transition compiled_next_
   compile_state from_state
 ```
 
-### Construct the compiled suffix char
+### Update a temporary state transition with a compiled suffix
 
 ```ocaml
 val update_common_state_transition:  
-  remaining_new_output: output
-  -> remainig_old_output: output
+  new_output: output
+  -> old_output: output
   -> common_state_transition: temporary_state_transition
   -> compiled_suffix_state: compiled_state
+  -> temporary_state_transition
 
 ```
 
-* Add the remaining_old_output and the current output in the temporary_state_transition
-* Add a transition to the from state of common_state_transition from the current char and the previously combined output to the compiled_suffix_state
-* Create a new temporary state transition with the first char of the new word's suffix and the remaining output the remaining
+Construct a new temporary state transition. The new transition's output will be the new_output and will have an
+additional state transition pointing to compiled state.
 
 ### Fill the remaining letters of the new word's suffix
 
@@ -130,7 +135,7 @@ The current word can be split into a prefix and the last state transition.
 
 ### Push the outputs up the prefix
 
-This will be the same as for case 2
+This will be the same as for case 1
 
 #Update the last state transition
 

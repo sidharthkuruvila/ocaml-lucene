@@ -35,6 +35,7 @@ module Make(Fst: Fst.S) = struct
     let from_state = State.update_transitions from_state ~f:(fun transition ->
           { transition with State.output = (Output.add old_output transition.State.output) }) in
     let from_state = State.set_transition from_state ch (Output.add old_output output) compiled_suffix_state in
+    let from_state = State.update_final_output from_state ~f:(fun current_final_output -> Output.add old_output current_final_output) in
     { ch = new_char; output = remaining_output; from_state }
 
   let make_word word output final_output =

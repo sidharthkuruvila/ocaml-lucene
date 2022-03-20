@@ -190,6 +190,11 @@ let tests = [
     "Ghandi", "Gandhi";
     "Guatamala", "Guatamala";
   ];
+  "Final output of common state transition should be updated", [
+    "agressively", "aggressively";
+    "agre", "agree";
+    "agred", "agreed";
+  ];
   (*Not supported right now *)
   (*"Duplicate words ", [
         "ca", "bat";

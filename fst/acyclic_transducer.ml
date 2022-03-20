@@ -105,5 +105,4 @@ module Make(Fst: Fst.S) = struct
     let* last_word = fold_left add_word (return first_word) items in
     let* empty_compiled_state = State.empty_final_state ~empty_output:Output.empty |> Fst.compile_state in
     Fst.fold_right compile_temporary_state_transition last_word (return empty_compiled_state)
-
 end

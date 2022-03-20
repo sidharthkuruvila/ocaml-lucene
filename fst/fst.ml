@@ -63,7 +63,7 @@ module Make(Outputs: Output.S): (S with type Output.t = Outputs.t) = struct
 module Output = Outputs
 module Output_set = Set.Make(Output)
 
-let string_of_output_set s = Printf.sprintf "String_set [%s]" (Output_set.to_seq s |> List.of_seq |> List.map Output.to_string |> String.concat "; ")
+let string_of_output_set s = Output_set.to_seq s |> List.of_seq |> List.map Output.to_string |> String.concat ", "
 module Int_set = Set.Make(Int)
 
 module Int_map = Map.Make(Int)

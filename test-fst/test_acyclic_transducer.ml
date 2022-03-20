@@ -240,13 +240,22 @@ let read_spellings filename : (string * (string list)) list =
    | ([], _) -> l in
   loop lines []
 
+
+let rec dedup ~f list =
+  match list with
+  | [] -> []
+  | [_] -> list
+  | a::b::rest when f a b -> dedup ~f (a::rest)
+  | a::rest -> a :: dedup ~f rest
+
 let test_spellings () =
   let module Fst = Fst.Make(String_output) in
   let open Fst in
   let module Builder = Acyclic_transducer.Make(Fst) in
   let spellings = read_spellings "data/wikipedia.txt" in
   let mappings: (string * string) list = List.concat_map (fun (c, ms) -> List.map (fun m -> (m, c)) ms) spellings
-    |> List.sort (fun (a, _) (b, _) -> String.compare a b) in
+    |> List.sort (fun (a, _) (b, _) -> String.compare a b)
+    |> dedup ~f:(fun (a, _) (b, _) -> String.equal a b) in
     ignore (
   Fst.run 'a' 'z' (
        let* start_state = Builder.create_minimal_transducer  mappings in
@@ -267,5 +276,5 @@ let tests = [
   "Add a word when the common prefix is shorter than the current word 2", `Quick, test_add_word_when_common_prefix_shorter_than_current_word_2;
   "Add a word when the common prefix is the same as the current word", `Quick, test_add_word_when_common_prefix_is_same_as_current_word;
   "Construct a minimal transducer", `Quick, test_create_minimal_transducers;
-  "Test against a spellings dictionary", `Quick, test_spellings;
+  "Test against a spellings dictionary", `Slow, test_spellings;
 ]

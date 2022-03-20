@@ -21,7 +21,7 @@ module Make(Fst: Fst.S) = struct
      let from_state = temporary_state_transition.from_state in
      let from_state = State.update_transitions from_state ~f:(fun transition ->
             { transition with State.output = (Output.add old_output transition.State.output) }) in
-     let from_state = State.update_final_output from_state ~f:(fun current_final_output -> Output.add word_suffix current_final_output) in
+     let from_state = State.update_final_output from_state ~f:(fun current_final_output -> Output.add old_output current_final_output) in
      let updated_transition = {temporary_state_transition with output = common_prefix; from_state } in
      (remainder, word_suffix, updated_transition::acc)
 

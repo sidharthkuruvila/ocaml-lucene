@@ -41,19 +41,12 @@ module type S = sig
   val state_output: state -> Output_set.t t
   val set_state_output: state -> Output_set.t -> unit t
 
-  val output: state -> Char.t -> Output.t Option.t t
-  val outputs: state -> (Char.t * Output.t) list t
-  val output_str: state -> Char.t -> Output.t t
-  val set_output: state -> Char.t -> Output.t -> unit t
-
   val compile_state: (state, Output.t) State.t -> state t
 
   val print_transducer: state -> String.t -> unit t
 
   val debug: unit t
   val accept: string -> state -> Output_set.t t
-
-  val all: 'a t list -> 'a list t
 
   val state_to_int: state -> int
 end
@@ -153,8 +146,6 @@ let fold_right f l init transducer =
        f x res transducer in
   loop l transducer
 
-let all l=
-  fold_left (fun acc a t -> let (r, t) = a t in (r :: acc, t)) (return []) l >>| List.rev
 (*
 Create a new state in the transducer.
 This is done by adding empty items in the transitions, state_outputs and outputs maps
@@ -211,9 +202,6 @@ let set_state_output state outputs transducer =
 let output state char transducer =
   let state_outputs = Int_map.find_opt state transducer.outputs in
     (Option.bind state_outputs (fun state_outputs -> Char_map.find_opt char state_outputs), transducer)
-
-let outputs state transducer =
-  (Int_map.find state transducer.outputs |> Char_map.to_seq |> List.of_seq, transducer)
 
 let output_str state char =
   let* o = output state char in

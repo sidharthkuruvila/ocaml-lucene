@@ -76,8 +76,20 @@ type transducer = {
 
 }
 
-type 'a t = transducer -> ('a * transducer)
 type state = int
+
+module M = struct
+  type 'a t = transducer -> ('a * transducer)
+  let bind m f t = let (a, t) = (m t) in f a t
+  let map m f t = let (a, t) = (m t) in (f a, t)
+  let return a t = (a, t)
+end
+
+module Ops = Monad.Ops.Make(M)
+
+include M
+include Ops
+include Ops.Infix
 
 let run first_char last_char (f:'a t) =
   let transducer = {
@@ -106,18 +118,8 @@ let make first_char last_char =
 
 (*let show_dictionary { dictionary; _} = (String.concat ", " (List.map (fun n -> Printf.sprintf "%d" n) dictionary))*)
 
-let bind m f t = let (a, t) = (m t) in f a t
-
-let map m f t = let (a, t) = (m t) in (f a, t)
-
-let return a t = (a, t)
-
 let value (a, _) = a
 (*let st (_, state) = state*)
-
-let (let*) = bind
-let (>>|) = map
-let (>>=) = bind
 
 let cond pred ~if_true ~if_false =
   let* b = pred in
@@ -125,26 +127,6 @@ let cond pred ~if_true ~if_false =
     if_true ()
   else
     if_false ()
-
-let fold_left f init l transducer =
-  let (init, transducer) = init transducer in
-  let rec loop l acc transducer =
-    match l with
-    | [] -> (acc, transducer)
-    | x::rest ->
-       let (res, transducer) = f acc x transducer in
-       loop rest res transducer in
-  loop l init transducer
-
-let fold_right f l init transducer =
-  let (init, transducer) = init transducer in
-  let rec loop l transducer =
-    match l with
-    | [] -> (init, transducer)
-    | x::rest ->
-       let (res, transducer) = loop rest transducer in
-       f x res transducer in
-  loop l transducer
 
 (*
 Create a new state in the transducer.

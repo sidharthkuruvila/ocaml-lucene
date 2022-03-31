@@ -4,13 +4,8 @@ module type S = sig
 
   module Output: Output.S
 
-  module Arc: sig
-    type t
-    val output: t -> Output.t
-    val final_output: t -> Output.t
-  end
-  val first_arc: t -> Arc.t
-  val read_next_arc: int -> fst_reader:t -> arc:Arc.t -> Arc.t Option.t
+  val first_arc: t -> Output.t Arc.t
+  val read_next_arc: int -> fst_reader:t -> arc:Output.t Arc.t -> Output.t Arc.t Option.t
 end
 
 module Make(M: S) = struct
@@ -32,8 +27,8 @@ module Make(M: S) = struct
 
   let rec make_output path =
     match path with
-    | [x] -> M.Output.add (M.Arc.output x) (M.Arc.final_output x)
+    | [x] -> M.Output.add (x.Arc.output) (x.Arc.final_output)
     | x::rest ->
-        M.Output.add (M.Arc.output x) (make_output rest)
+        M.Output.add (x.Arc.output) (make_output rest)
     | [] -> M.Output.empty
 end

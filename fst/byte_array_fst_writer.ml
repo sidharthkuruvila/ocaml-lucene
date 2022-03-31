@@ -34,15 +34,6 @@ module type Buffer_output_writer = Output_writer.S with type data_output = Buffe
 module Make (Data_output: Data_output.S)(Output: Output.S)
             (Output_writer: Buffer_output_writer with type t = Output.t) = struct
 
-  module Arc = struct
-    type t = {
-      target: int;
-      label: int;
-      output: Output.t;
-      final_output: Output.t;
-    }
-  end
-
   let write_linear_scan_node data_output next_node arcs =
     let last_arc_index = List.length arcs - 1 in
     let buffer = Buffer.create 10 in

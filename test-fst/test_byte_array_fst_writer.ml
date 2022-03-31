@@ -21,7 +21,7 @@ let test_build_a_byte_array_fst () =
   ] in
   let buffer = Buffer.create 10 in
   let start_target = List.fold_left (fun (current_target, previous_target) (label, output, final_output) ->
-     let arc = O.Arc.({
+     let arc = Arc.({
        target = current_target;
        label = int_of_char label;
        output;

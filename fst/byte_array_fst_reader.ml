@@ -27,24 +27,15 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
     start_position: Int.t;
   }
 
-  module Arc = struct
-    type t = {
-      target: int;
-      output: Output.t;
-      final_output: Output.t;
-      next_arc: int option;
-    } [@@deriving show]
 
-    let output t = t.output
-    let final_output t = t.final_output
-  end
 
   let first_arc t =
     Arc.{
+      label = -1;
       target = t.start_node;
       output = Output.empty;
       final_output = t.empty_output;
-      next_arc = None;
+(*      next_arc = None;*)
     }
 
   let is_bit_set ~get_byte_at index =
@@ -159,31 +150,34 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       let is_final_arc = check_flag flags bit_final_arc in
       if is_stop_node then begin
         Some {
-           Arc.target = if is_final_arc then -1 else 0;
+           Arc.label;
+           target = if is_final_arc then -1 else 0;
            output;
            final_output;
-           next_arc = Some (Data_input.get_position input)
+(*           next_arc = Some (Data_input.get_position input)*)
         }
       end else if check_flag flags bit_target_next then
-        let target, next_arc = if check_flag flags bit_last_arc then
+        let target, _ (*next_arc*) = if check_flag flags bit_last_arc then
             (Data_input.get_position input, None)
           else
             let arc_count = count_bits presence_byte_count ~input ~bit_table_start in
             (pos_arc_start - bytes_per_arc * arc_count, Some (Data_input.get_position input)) in
         Some {
-          Arc.target;
+          Arc.label;
+          target;
           output;
           final_output;
-          next_arc;
+(*          next_arc;*)
         }
       else
         let target = Data_input.read_vlong input in
-        let next_arc = Some (Data_input.get_position input) in
+(*        let next_arc = Some (Data_input.get_position input) in*)
         Some {
-          Arc.target;
+          Arc.label;
+          target;
           output;
           final_output;
-          next_arc;
+(*          next_arc;*)
         }
 
   let read_label ~input =
@@ -210,7 +204,6 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
             search low (mid + 1) in
     search low high
 
-
   let skip_to_next_arc ~flags ~input =
     if check_flag flags bit_arc_has_output then ignore (Output_reader.read input);
     if check_flag flags bit_arc_has_final_output then ignore (Output_reader.read input);
@@ -220,8 +213,6 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
   let seek_to_next_node ~input =
     let _ = input in
     failwith "not implemented yet"
-
-
 
   let rec next_arc_using_linear_scan label ~flags ~input =
     let arc_label = read_label ~input in
@@ -238,31 +229,34 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       let is_final_arc = check_flag flags bit_final_arc in
       if is_stop_node then
         Some {
-           Arc.target = if is_final_arc then -1 else 0;
+           Arc.label;
+           target = if is_final_arc then -1 else 0;
            output;
            final_output;
-           next_arc = Some (Data_input.get_position input)
+(*           next_arc = Some (Data_input.get_position input)*)
         }
       else if check_flag flags bit_target_next then
-        let next_arc = Some (Data_input.get_position input) in
+(*        let next_arc = Some (Data_input.get_position input) in*)
         let target = if check_flag flags bit_last_arc then
           Data_input.get_position input
         else
           seek_to_next_node ~input in
         Some {
-          Arc.target;
+          Arc.label;
+          target;
           output;
           final_output;
-          next_arc
+(*          next_arc*)
         }
       else
         let target = Data_input.read_vint input in
-        let next_arc = Some (Data_input.get_position input) in
+(*        let next_arc = Some (Data_input.get_position input) in*)
         Some {
-          Arc.target;
+          Arc.label;
+          target;
           output;
           final_output;
-          next_arc
+(*          next_arc*)
         }
       else
         let has_more_arcs = skip_to_next_arc ~flags ~input in

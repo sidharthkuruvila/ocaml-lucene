@@ -209,53 +209,59 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
     let _ = input in
     failwith "not implemented yet"
 
+  let read_linear_arc ~input ~flags arc_position =
+    Data_input.set_position input arc_position;
+    let label = read_label ~input in
+    let output = if check_flag flags bit_arc_has_output then
+        Output_reader.read input
+      else
+        Output.empty in
+    let final_output = if check_flag flags bit_arc_has_final_output then
+        Output_reader.read input
+      else
+        Output.empty in
+    let is_stop_node = check_flag flags bit_stop_node in
+    let is_final_arc = check_flag flags bit_final_arc in
+    if is_stop_node then
+      let next_arc = Some (Data_input.get_position input) in
+      Some ({
+         Arc.label;
+         target = if is_final_arc then -1 else 0;
+         output;
+         final_output;
+      }, next_arc)
+    else if check_flag flags bit_target_next then
+      let next_arc = Some (Data_input.get_position input) in
+      let target = if check_flag flags bit_last_arc then
+        Data_input.get_position input
+      else
+        seek_to_next_node ~input in
+      Some ({
+        Arc.label;
+        target;
+        output;
+        final_output;
+      }, next_arc)
+    else
+      let target = Data_input.read_vint input in
+      let next_arc = Some (Data_input.get_position input) in
+      Some ({
+        Arc.label;
+        target;
+        output;
+        final_output;
+      }, next_arc)
+
   let rec next_arc_using_linear_scan label ~flags ~input =
+    let arc_position = Data_input.get_position input in
     let arc_label = read_label ~input in
     if arc_label = label then
-      let output = if check_flag flags bit_arc_has_output then
-          Output_reader.read input
-        else
-          Output.empty in
-      let final_output = if check_flag flags bit_arc_has_final_output then
-          Output_reader.read input
-        else
-          Output.empty in
-      let is_stop_node = check_flag flags bit_stop_node in
-      let is_final_arc = check_flag flags bit_final_arc in
-      if is_stop_node then
-        let next_arc = Some (Data_input.get_position input) in
-        Some ({
-           Arc.label;
-           target = if is_final_arc then -1 else 0;
-           output;
-           final_output;
-        }, next_arc)
-      else if check_flag flags bit_target_next then
-        let next_arc = Some (Data_input.get_position input) in
-        let target = if check_flag flags bit_last_arc then
-          Data_input.get_position input
-        else
-          seek_to_next_node ~input in
-        Some ({
-          Arc.label;
-          target;
-          output;
-          final_output;
-        }, next_arc)
-      else
-        let target = Data_input.read_vint input in
-        let next_arc = Some (Data_input.get_position input) in
-        Some ({
-          Arc.label;
-          target;
-          output;
-          final_output;
-        }, next_arc)
-      else
-        let has_more_arcs = skip_to_next_arc ~flags ~input in
-        let flags = Data_input.read_byte input |> int_of_char in
-        if has_more_arcs then next_arc_using_linear_scan label ~flags ~input
-        else None
+      read_linear_arc ~input ~flags arc_position
+    else
+      let has_more_arcs = skip_to_next_arc ~flags ~input in
+      let flags = Data_input.read_byte input |> int_of_char in
+      if has_more_arcs then next_arc_using_linear_scan label ~flags ~input
+      else None
 
   let read_next_arc label ~fst_reader ~arc =
     let input = fst_reader.di in

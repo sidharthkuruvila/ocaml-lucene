@@ -28,16 +28,16 @@ let test_compile_byte_array_fst () =
   Alcotest.(check int) "First state should be less than the size of the buffer" (Buffer.length buffer) (first_state + 1);
   let fst_bytes = Buffer.contents buffer in
   let di = P.of_bytes fst_bytes in
-  let fst = S.create ~di ~start_node:first_state ~empty_output:"" in
-  let path = T.fst_match_term ~fst "cat" in
+  let fst_reader = S.create ~di ~start_node:first_state ~empty_output:"" in
+  let path = T.fst_match_term ~fst_reader "cat" in
   let result = T.make_output path in
   let expected = "cataracts" in
   Alcotest.(check string) "Expect result for input \"cat\" to be \"cataracts\"" expected result;
-  let path = T.fst_match_term ~fst "ca" in
+  let path = T.fst_match_term ~fst_reader "ca" in
   let result = T.make_output path in
   let expected = "catarmuh" in
   Alcotest.(check string) "Expect result for input \"ca\" to be \"catarmuh\"" expected result;
-  let path = T.fst_match_term ~fst "c" in
+  let path = T.fst_match_term ~fst_reader "c" in
   let result = T.make_output path in
   let expected = "catguh" in
   Alcotest.(check string) "Expect result for input \"c\" to be \"catguh\"" expected result

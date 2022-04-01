@@ -5,12 +5,11 @@ module type S = sig
   module Output: Output.S
 
   val first_arc: t -> Output.t Arc.t
-  val read_next_arc: int -> fst_reader:t -> arc:Output.t Arc.t -> Output.t Arc.t Option.t
+  val read_next_arc: int -> fst_reader:t -> arc:Output.t Arc.t -> (Output.t Arc.t * int Option.t) Option.t
 end
 
 module Make(M: S) = struct
-  let fst_match_term ~fst term =
-    let fst_reader = fst in
+  let fst_match_term ~fst_reader term =
     let start_arc = M.first_arc fst_reader in
     let target_length = String.length term in
     let rec loop prev_arc n =
@@ -20,7 +19,7 @@ module Make(M: S) = struct
         let label = int_of_char (String.get term n) in
         let arc_option = M.read_next_arc label ~fst_reader ~arc:prev_arc in
         match arc_option with
-        | Some arc -> prev_arc::(loop arc (n + 1))
+        | Some arc -> prev_arc::(loop (fst arc) (n + 1))
         | None -> [prev_arc] in
     let path = loop start_arc 0 in
     path

@@ -51,9 +51,9 @@ let test_running_an_fst () =
   let di = M.of_bytes bytes in
   let start_node = 45 in
   let empty_output = 0 in
-  let fst = P.create ~di ~start_node ~empty_output in
+  let fst_reader = P.create ~di ~start_node ~empty_output in
   List.iter (fun (input, expected) ->
-    let path = Q.fst_match_term ~fst input in
+    let path = Q.fst_match_term ~fst_reader input in
     let result = Q.make_output path in
     let test_message = Printf.sprintf "Expect result %d for input \"%s\"" expected input in
     Alcotest.(check int) test_message expected result
@@ -68,9 +68,9 @@ let test_spelling_corrections () =
   let di = M.of_bytes bytes in
   let start_node = 32136 in
   let empty_output = "" in
-  let fst = P.create ~di ~start_node ~empty_output in
+  let fst_reader = P.create ~di ~start_node ~empty_output in
   List.iter (fun (input, expected) ->
-    let path = Q.fst_match_term ~fst input in
+    let path = Q.fst_match_term ~fst_reader input in
     let result = Q.make_output path in
     let test_message = Printf.sprintf "Expect result %s for input \"%s\"" expected input in
     Alcotest.(check string) test_message expected result

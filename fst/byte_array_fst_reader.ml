@@ -27,15 +27,12 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
     start_position: Int.t;
   }
 
-
-
   let first_arc t =
     Arc.{
       label = -1;
       target = t.start_node;
       output = Output.empty;
       final_output = t.empty_output;
-(*      next_arc = None;*)
     }
 
   let is_bit_set ~get_byte_at index =
@@ -149,36 +146,34 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       let is_stop_node = check_flag flags bit_stop_node in
       let is_final_arc = check_flag flags bit_final_arc in
       if is_stop_node then begin
-        Some {
+        let next_arc = Some (Data_input.get_position input) in
+        Some ({
            Arc.label;
            target = if is_final_arc then -1 else 0;
            output;
            final_output;
-(*           next_arc = Some (Data_input.get_position input)*)
-        }
+        }, next_arc)
       end else if check_flag flags bit_target_next then
-        let target, _ (*next_arc*) = if check_flag flags bit_last_arc then
+        let target, next_arc = if check_flag flags bit_last_arc then
             (Data_input.get_position input, None)
           else
             let arc_count = count_bits presence_byte_count ~input ~bit_table_start in
             (pos_arc_start - bytes_per_arc * arc_count, Some (Data_input.get_position input)) in
-        Some {
+        Some ({
           Arc.label;
           target;
           output;
           final_output;
-(*          next_arc;*)
-        }
+        }, next_arc)
       else
         let target = Data_input.read_vlong input in
-(*        let next_arc = Some (Data_input.get_position input) in*)
-        Some {
+        let next_arc = Some (Data_input.get_position input) in
+        Some ({
           Arc.label;
           target;
           output;
           final_output;
-(*          next_arc;*)
-        }
+        }, next_arc)
 
   let read_label ~input =
     Data_input.read_byte input |> int_of_char
@@ -228,36 +223,34 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       let is_stop_node = check_flag flags bit_stop_node in
       let is_final_arc = check_flag flags bit_final_arc in
       if is_stop_node then
-        Some {
+        let next_arc = Some (Data_input.get_position input) in
+        Some ({
            Arc.label;
            target = if is_final_arc then -1 else 0;
            output;
            final_output;
-(*           next_arc = Some (Data_input.get_position input)*)
-        }
+        }, next_arc)
       else if check_flag flags bit_target_next then
-(*        let next_arc = Some (Data_input.get_position input) in*)
+        let next_arc = Some (Data_input.get_position input) in
         let target = if check_flag flags bit_last_arc then
           Data_input.get_position input
         else
           seek_to_next_node ~input in
-        Some {
+        Some ({
           Arc.label;
           target;
           output;
           final_output;
-(*          next_arc*)
-        }
+        }, next_arc)
       else
         let target = Data_input.read_vint input in
-(*        let next_arc = Some (Data_input.get_position input) in*)
-        Some {
+        let next_arc = Some (Data_input.get_position input) in
+        Some ({
           Arc.label;
           target;
           output;
           final_output;
-(*          next_arc*)
-        }
+        }, next_arc)
       else
         let has_more_arcs = skip_to_next_arc ~flags ~input in
         let flags = Data_input.read_byte input |> int_of_char in

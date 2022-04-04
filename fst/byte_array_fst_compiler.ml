@@ -10,6 +10,7 @@ module Make(Output: Output.S)(Output_writer: Output_writer.S
   type transducer = {
     buffer: Buffer.t;
     last_node: int;
+    hash_tbl: (Output.t Arc.t list, int) Hashtbl.t;
   }
 
   module M = struct
@@ -30,12 +31,13 @@ module Make(Output: Output.S)(Output_writer: Output_writer.S
 
   open Writer
 
-  let compile_state uncompiled_state {buffer; last_node = next_node} =
+  let compile_state uncompiled_state transducer =
+    let {buffer; last_node = next_node; hash_tbl} = transducer in
     let { State.final_output; transitions } = uncompiled_state in
     if Lists.is_empty transitions then
       match final_output with
-      | None -> ((Output.empty, 0), { buffer; last_node = 0 })
-      | Some final_output -> ((final_output, -1), { buffer; last_node = -1 })
+      | None -> ((Output.empty, 0), { transducer with buffer; last_node = 0 })
+      | Some final_output -> ((final_output, -1), { transducer with buffer; last_node = -1 })
     else
       let final_output = Option.value final_output ~default:Output.empty in
       let arcs = List.map (fun {State.ch; output; target = (next_final_output, target) } ->
@@ -44,10 +46,13 @@ module Make(Output: Output.S)(Output_writer: Output_writer.S
           final_output = next_final_output;
         }
       ) transitions in
-      let last_node = write_node buffer next_node arcs in
-      ((final_output, last_node), {buffer; last_node})
+      if not (Hashtbl.mem hash_tbl arcs) then begin
+        let last_node = write_node buffer next_node arcs in
+        Hashtbl.replace hash_tbl arcs last_node end;
+      let last_node = Hashtbl.find hash_tbl arcs in
+      ((final_output, last_node), { transducer with buffer; last_node})
 
   let run m =
-    let transducer = { buffer=Buffer.create 1024; last_node = -1 } in
+    let transducer = { buffer=Buffer.create 1024; last_node = -1; hash_tbl = Hashtbl.create 1024 } in
     m transducer |> snd
 end

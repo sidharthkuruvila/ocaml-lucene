@@ -18,7 +18,7 @@ let test_compile_byte_array_fst () =
     'a', "ar", "guh";
     'c', "cat", "ignored";
   ] in
-  let {Compiler.buffer; last_node = first_state} = run (
+  let {Compiler.buffer; last_node = first_state; _} = run (
     fold_left (fun target (ch, output, final_output) ->
       let transitions = [{State.ch; output; target}] in
       let state = { State.transitions; final_output = Some final_output } in

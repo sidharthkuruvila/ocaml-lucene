@@ -27,6 +27,8 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
     start_position: Int.t;
   }
 
+  let get_start_node t = t.start_node
+
   let first_arc t =
     Arc.{
       label = -1;

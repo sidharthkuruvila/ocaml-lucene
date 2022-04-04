@@ -45,19 +45,19 @@ arc
 ## Compiling an uncompiled state
 
 ### Variables
-* node_hashes: (arc list, int) Hashtbl.t.
+* node_hashes: (arc list, int) Hashtbl.t - A hash table where the key is a list of arcs and the value is the
+  position of the the node the list compiles into.
 * uncompiled_state: (output, (output, compiled_state)) State.t
 
 ### Algorithm
 
 * Convert the uncompiled state into a list of arcs
 * If the arc is not a key in the hash table
-   * Write te list of arcs as a new node
-   * Add the list of arcs and the new nodes position into the hash table
+   * Write the list of arcs as a new node in the byte array fst
+   * Add the list of arcs and the new node's position into the hash table
 * Get the node position for the list of arcs from the hash table
 
-
-## Al alternative approach
+## An alternate approach
 
 This approach adds some complexity for some space savings. It avoids the need to store entire arc lists as keys.
 

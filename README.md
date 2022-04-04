@@ -9,3 +9,4 @@ I try to document what I've learned.
  * [Bit packing](doc/bit_packing.md)
  * [The terms index](doc/terms_index.md)
  * [Constructing an acyclic transducer](doc/constructing_an_acyclic_transducer.md)
+ * [Compiling a byte array fst](doc/compiling_byte_array_fst_states.md)

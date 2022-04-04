@@ -265,20 +265,33 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       if has_more_arcs then next_arc_using_linear_scan label ~flags ~input
       else None
 
+  let use_node_search_strategy ~input target
+    ~use_direct_addressing
+    ~use_binary_search
+    ~use_linear_scan =
+    assert (target > 0 );
+    Data_input.set_position input target;
+    let flags = Data_input.read_byte input |> int_of_char in
+    if flags = arcs_for_direct_addressing then
+      use_direct_addressing ()
+    else if flags = arcs_for_binary_search then
+      use_binary_search ()
+    else
+      use_linear_scan flags
+
   let read_next_arc label ~fst_reader ~arc =
     let input = fst_reader.di in
-    if arc.Arc.target <= 0 then
-      failwith "Next node has no outgoing arcs"
-    else begin
-      Data_input.set_position input arc.Arc.target;
-      let flags = Data_input.read_byte input |> int_of_char in
-      if flags = arcs_for_direct_addressing then
-        next_arc_using_direct_addressing label ~input
-      else if flags = arcs_for_binary_search then
-        failwith "binary search not implemented yet"
-      else
-        next_arc_using_linear_scan label ~flags ~input
-    end
+    let use_direct_addressing () =
+      next_arc_using_direct_addressing label ~input in
+    let use_binary_search () =
+      failwith "binary search not implemented yet" in
+    let use_linear_scan flags =
+       next_arc_using_linear_scan label ~flags ~input in
+    let target = arc.Arc.target in
+    use_node_search_strategy ~input target
+      ~use_direct_addressing
+      ~use_binary_search
+      ~use_linear_scan
 
   let read_linear_arcs_at_target ~flags ~input =
     let rec loop flags =
@@ -293,13 +306,14 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
 
   let read_arcs_at_target ~fst_reader target =
     let input = fst_reader.di in
-    assert (target > 0 );
-    Data_input.set_position input target;
-    let flags = Data_input.read_byte input |> int_of_char in
-    if flags = arcs_for_direct_addressing then
-      failwith "direct addressing not implemented yet"
-    else if flags = arcs_for_binary_search then
-      failwith "binary search not implemented yet"
-    else
-      read_linear_arcs_at_target ~flags ~input
+    let use_direct_addressing () =
+      failwith "direct addressing not implemented yet" in
+    let use_binary_search () =
+      failwith "binary search not implemented yet" in
+    let use_linear_scan flags =
+      read_linear_arcs_at_target ~flags ~input in
+    use_node_search_strategy ~input target
+      ~use_direct_addressing
+      ~use_binary_search
+      ~use_linear_scan
 end

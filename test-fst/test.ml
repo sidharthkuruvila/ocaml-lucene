@@ -9,4 +9,5 @@ let () =
     "Working with lists", Test_lists.tests;
     "Monad", Test_monad.tests;
     "Byte array fst compiler", Test_byte_array_fst_compiler.tests;
+    "Arc", Test_arc.tests;
   ]

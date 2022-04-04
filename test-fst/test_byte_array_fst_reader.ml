@@ -51,9 +51,9 @@ let test_running_an_fst () =
   let di = M.of_bytes bytes in
   let start_node = 45 in
   let empty_output = 0 in
-  let fst = P.create ~di ~start_node ~empty_output in
+  let fst_reader = P.create ~di ~start_node ~empty_output in
   List.iter (fun (input, expected) ->
-    let path = Q.fst_match_term ~fst input in
+    let path = Q.fst_match_term ~fst_reader input in
     let result = Q.make_output path in
     let test_message = Printf.sprintf "Expect result %d for input \"%s\"" expected input in
     Alcotest.(check int) test_message expected result
@@ -68,15 +68,33 @@ let test_spelling_corrections () =
   let di = M.of_bytes bytes in
   let start_node = 32136 in
   let empty_output = "" in
-  let fst = P.create ~di ~start_node ~empty_output in
+  let fst_reader = P.create ~di ~start_node ~empty_output in
   List.iter (fun (input, expected) ->
-    let path = Q.fst_match_term ~fst input in
+    let path = Q.fst_match_term ~fst_reader input in
     let result = Q.make_output path in
     let test_message = Printf.sprintf "Expect result %s for input \"%s\"" expected input in
     Alcotest.(check string) test_message expected result
   ) spellings
 
+let test_read_all_arcs_in_a_linear_node () =
+  let module O = Int_output_reader.Make(N) in
+  let module P = Byte_array_fst_reader.Make(N)(Int_output)(O) in
+  let module Q = Byte_array_fst_reader_utils.Make(P) in
+  let bytes = read_whole_file "data/fst-4.bytes" in
+  let di = M.of_bytes bytes in
+  let start_node = 13 in
+  let empty_output = 0 in
+  let fst_reader = P.create ~di ~start_node ~empty_output in
+  let expected_arcs = [
+    { Arc.label=97; target=3; output=5; final_output=0 };
+    { label=99; target=5; output=3; final_output=9 };
+  ] in
+  let arcs = P.read_arcs_at_target ~fst_reader start_node in
+  Alcotest.(check int) "The node should contain two arcs\n" 2 (List.length arcs);
+  Alcotest.(check int) "The arcs should be expected\n" 0 (Arc.compare_arc_lists ~compare_outputs:Int_output.compare arcs expected_arcs)
+
 let tests = [
-  "test running an fst", `Quick, test_running_an_fst;
-  "test running an fst for corrections", `Slow, test_spelling_corrections;
+  "Run an fst", `Quick, test_running_an_fst;
+  "Fun an fst for spelling corrections", `Slow, test_spelling_corrections;
+  "Read all arcs in a linear node", `Quick, test_read_all_arcs_in_a_linear_node;
 ]

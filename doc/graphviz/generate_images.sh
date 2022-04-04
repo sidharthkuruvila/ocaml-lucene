@@ -5,3 +5,4 @@ dot -Tpng dictionary-block.gv > ../images/dictionary-block.png
 dot -Tpng vint.gv > ../images/vint.png
 dot -Tpng simple-dag.gv > ../images/simple-dag.png
 dot -Tpng acyclic-transducer-types.gv > ../images/acyclic-transducer-types.png
+dot -Tpng compiled-byte-array-fst-nodes.gv > ../images/compiled-byte-array-fst-nodes.png

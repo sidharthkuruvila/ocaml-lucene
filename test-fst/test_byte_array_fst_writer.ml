@@ -21,7 +21,7 @@ let test_build_a_byte_array_fst () =
   ] in
   let buffer = Buffer.create 10 in
   let start_target = List.fold_left (fun (current_target, previous_target) (label, output, final_output) ->
-     let arc = O.Arc.({
+     let arc = Arc.({
        target = current_target;
        label = int_of_char label;
        output;
@@ -30,8 +30,8 @@ let test_build_a_byte_array_fst () =
      (O.write_node buffer previous_target [arc], current_target)) (-1, -1) arcs in
   let fst_bytes = Buffer.contents buffer in
   let di = P.of_bytes fst_bytes in
-  let fst = S.create ~di ~start_node:(fst start_target) ~empty_output:"" in
-  let path = T.fst_match_term ~fst "cat" in
+  let fst_reader = S.create ~di ~start_node:(fst start_target) ~empty_output:"" in
+  let path = T.fst_match_term ~fst_reader "cat" in
   let result = T.make_output path in
   let expected = "cataracts" in
   Alcotest.(check string) "Expect result for input \"cat\" to be \"cataracts\"" expected result

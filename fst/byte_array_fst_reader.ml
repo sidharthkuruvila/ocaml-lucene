@@ -27,24 +27,14 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
     start_position: Int.t;
   }
 
-  module Arc = struct
-    type t = {
-      target: int;
-      output: Output.t;
-      final_output: Output.t;
-      next_arc: int option;
-    } [@@deriving show]
-
-    let output t = t.output
-    let final_output t = t.final_output
-  end
+  let get_start_node t = t.start_node
 
   let first_arc t =
     Arc.{
+      label = -1;
       target = t.start_node;
       output = Output.empty;
       final_output = t.empty_output;
-      next_arc = None;
     }
 
   let is_bit_set ~get_byte_at index =
@@ -158,37 +148,39 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       let is_stop_node = check_flag flags bit_stop_node in
       let is_final_arc = check_flag flags bit_final_arc in
       if is_stop_node then begin
-        Some {
-           Arc.target = if is_final_arc then -1 else 0;
+        let next_arc = Some (Data_input.get_position input) in
+        Some ({
+           Arc.label;
+           target = if is_final_arc then -1 else 0;
            output;
            final_output;
-           next_arc = Some (Data_input.get_position input)
-        }
+        }, next_arc)
       end else if check_flag flags bit_target_next then
         let target, next_arc = if check_flag flags bit_last_arc then
             (Data_input.get_position input, None)
           else
             let arc_count = count_bits presence_byte_count ~input ~bit_table_start in
             (pos_arc_start - bytes_per_arc * arc_count, Some (Data_input.get_position input)) in
-        Some {
-          Arc.target;
+        Some ({
+          Arc.label;
+          target;
           output;
           final_output;
-          next_arc;
-        }
+        }, next_arc)
       else
         let target = Data_input.read_vlong input in
         let next_arc = Some (Data_input.get_position input) in
-        Some {
-          Arc.target;
+        Some ({
+          Arc.label;
+          target;
           output;
           final_output;
-          next_arc;
-        }
+        }, next_arc)
 
   let read_label ~input =
     Data_input.read_byte input |> int_of_char
 
+(*
   let next_arc_using_binary_search label ~input =
     let num_arcs = Data_input.read_vint input in
     let bytes_per_arc = Data_input.read_vint input in
@@ -209,7 +201,7 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
          else
             search low (mid + 1) in
     search low high
-
+*)
 
   let skip_to_next_arc ~flags ~input =
     if check_flag flags bit_arc_has_output then ignore (Output_reader.read input);
@@ -221,68 +213,109 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
     let _ = input in
     failwith "not implemented yet"
 
-
+  let read_linear_arc ~input ~flags =
+    let label = read_label ~input in
+    let output = if check_flag flags bit_arc_has_output then
+        Output_reader.read input
+      else
+        Output.empty in
+    let final_output = if check_flag flags bit_arc_has_final_output then
+        Output_reader.read input
+      else
+        Output.empty in
+    let is_stop_node = check_flag flags bit_stop_node in
+    let is_final_arc = check_flag flags bit_final_arc in
+    if is_stop_node then
+      let next_arc = if check_flag flags bit_last_arc then None else Some (Data_input.get_position input) in
+      ({
+         Arc.label;
+         target = if is_final_arc then -1 else 0;
+         output;
+         final_output;
+      }, next_arc)
+    else if check_flag flags bit_target_next then
+      let next_arc = if check_flag flags bit_last_arc then None else Some (Data_input.get_position input) in
+      let target = if check_flag flags bit_last_arc then
+        Data_input.get_position input
+      else
+        seek_to_next_node ~input in
+      ({
+        Arc.label;
+        target;
+        output;
+        final_output;
+      }, next_arc)
+    else
+      let target = Data_input.read_vint input in
+      let next_arc = if check_flag flags bit_last_arc then None else Some (Data_input.get_position input) in
+      ({
+        Arc.label;
+        target;
+        output;
+        final_output;
+      }, next_arc)
 
   let rec next_arc_using_linear_scan label ~flags ~input =
+    let arc_position = Data_input.get_position input in
     let arc_label = read_label ~input in
-    if arc_label = label then
-      let output = if check_flag flags bit_arc_has_output then
-          Output_reader.read input
-        else
-          Output.empty in
-      let final_output = if check_flag flags bit_arc_has_final_output then
-          Output_reader.read input
-        else
-          Output.empty in
-      let is_stop_node = check_flag flags bit_stop_node in
-      let is_final_arc = check_flag flags bit_final_arc in
-      if is_stop_node then
-        Some {
-           Arc.target = if is_final_arc then -1 else 0;
-           output;
-           final_output;
-           next_arc = Some (Data_input.get_position input)
-        }
-      else if check_flag flags bit_target_next then
-        let next_arc = Some (Data_input.get_position input) in
-        let target = if check_flag flags bit_last_arc then
-          Data_input.get_position input
-        else
-          seek_to_next_node ~input in
-        Some {
-          Arc.target;
-          output;
-          final_output;
-          next_arc
-        }
-      else
-        let target = Data_input.read_vint input in
-        let next_arc = Some (Data_input.get_position input) in
-        Some {
-          Arc.target;
-          output;
-          final_output;
-          next_arc
-        }
-      else
-        let has_more_arcs = skip_to_next_arc ~flags ~input in
-        let flags = Data_input.read_byte input |> int_of_char in
-        if has_more_arcs then next_arc_using_linear_scan label ~flags ~input
-        else None
+    if arc_label = label then begin
+      Data_input.set_position input arc_position;
+      Some (read_linear_arc ~input ~flags)
+    end else
+      let has_more_arcs = skip_to_next_arc ~flags ~input in
+      let flags = Data_input.read_byte input |> int_of_char in
+      if has_more_arcs then next_arc_using_linear_scan label ~flags ~input
+      else None
+
+  let use_node_search_strategy ~input target
+    ~use_direct_addressing
+    ~use_binary_search
+    ~use_linear_scan =
+    assert (target > 0 );
+    Data_input.set_position input target;
+    let flags = Data_input.read_byte input |> int_of_char in
+    if flags = arcs_for_direct_addressing then
+      use_direct_addressing ()
+    else if flags = arcs_for_binary_search then
+      use_binary_search ()
+    else
+      use_linear_scan flags
 
   let read_next_arc label ~fst_reader ~arc =
     let input = fst_reader.di in
-    if arc.Arc.target <= 0 then
-      failwith "Next node has no outgoing arcs"
-    else begin
-      Data_input.set_position input arc.Arc.target;
-      let flags = Data_input.read_byte input |> int_of_char in
-      if flags = arcs_for_direct_addressing then
-        next_arc_using_direct_addressing label ~input
-      else if flags = arcs_for_binary_search then
-          failwith "binary search not implemented yet"
-(*        next_arc_using_binary_search label ~input*)
-      else
-        next_arc_using_linear_scan label ~flags ~input
-    end
+    let use_direct_addressing () =
+      next_arc_using_direct_addressing label ~input in
+    let use_binary_search () =
+      failwith "binary search not implemented yet" in
+    let use_linear_scan flags =
+       next_arc_using_linear_scan label ~flags ~input in
+    let target = arc.Arc.target in
+    use_node_search_strategy ~input target
+      ~use_direct_addressing
+      ~use_binary_search
+      ~use_linear_scan
+
+  let read_linear_arcs_at_target ~flags ~input =
+    let rec loop flags =
+      Printf.printf "inside loop\n";
+      let (arc, next_arc) = read_linear_arc ~flags ~input in
+      match next_arc with
+      | Some _ ->
+         let flags = Data_input.read_byte input |> int_of_char in
+         arc::(loop flags)
+      | None -> [arc] in
+    loop flags
+
+  let read_arcs_at_target ~fst_reader target =
+    let input = fst_reader.di in
+    let use_direct_addressing () =
+      failwith "direct addressing not implemented yet" in
+    let use_binary_search () =
+      failwith "binary search not implemented yet" in
+    let use_linear_scan flags =
+      read_linear_arcs_at_target ~flags ~input in
+    use_node_search_strategy ~input target
+      ~use_direct_addressing
+      ~use_binary_search
+      ~use_linear_scan
 end

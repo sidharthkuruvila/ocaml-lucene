@@ -90,7 +90,6 @@ let test_read_all_arcs_in_a_linear_node () =
     { label=99; target=5; output=3; final_output=9 };
   ] in
   let arcs = P.read_arcs_at_target ~fst_reader start_node in
-  List.iter (fun {Arc.label; _} -> Printf.printf "label: %i\n" label) arcs;
   Alcotest.(check int) "The node should contain two arcs\n" 2 (List.length arcs);
   Alcotest.(check int) "The arcs should be expected\n" 0 (Arc.compare_arc_lists ~compare_outputs:Int_output.compare arcs expected_arcs)
 

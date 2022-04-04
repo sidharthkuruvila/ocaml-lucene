@@ -30,3 +30,11 @@ let rec compare_arc_lists ~compare_outputs list1 list2 =
     let cmp = compare arc1 arc2 in
     if cmp <> 0 then cmp
     else compare_arc_lists ~compare_outputs rest1 rest2
+
+
+let show_arc ~show_output {label; target; output; final_output } =
+  Printf.sprintf "{ label=%d; target=%d; output=%s; final_output=%s }"
+    label target (show_output output) (show_output final_output)
+
+let show_arcs ~show_output arcs =
+  Printf.sprintf "[ %s ]" (String.concat ";" (List.map (show_arc ~show_output) arcs))

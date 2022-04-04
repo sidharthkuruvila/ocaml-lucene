@@ -178,6 +178,7 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
   let read_label ~input =
     Data_input.read_byte input |> int_of_char
 
+(*
   let next_arc_using_binary_search label ~input =
     let num_arcs = Data_input.read_vint input in
     let bytes_per_arc = Data_input.read_vint input in
@@ -198,6 +199,7 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
          else
             search low (mid + 1) in
     search low high
+*)
 
   let skip_to_next_arc ~flags ~input =
     if check_flag flags bit_arc_has_output then ignore (Output_reader.read input);
@@ -222,7 +224,7 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
     let is_stop_node = check_flag flags bit_stop_node in
     let is_final_arc = check_flag flags bit_final_arc in
     if is_stop_node then
-      let next_arc = Some (Data_input.get_position input) in
+      let next_arc = if check_flag flags bit_last_arc then None else Some (Data_input.get_position input) in
       ({
          Arc.label;
          target = if is_final_arc then -1 else 0;
@@ -230,7 +232,7 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
          final_output;
       }, next_arc)
     else if check_flag flags bit_target_next then
-      let next_arc = Some (Data_input.get_position input) in
+      let next_arc = if check_flag flags bit_last_arc then None else Some (Data_input.get_position input) in
       let target = if check_flag flags bit_last_arc then
         Data_input.get_position input
       else
@@ -243,7 +245,7 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       }, next_arc)
     else
       let target = Data_input.read_vint input in
-      let next_arc = Some (Data_input.get_position input) in
+      let next_arc = if check_flag flags bit_last_arc then None else Some (Data_input.get_position input) in
       ({
         Arc.label;
         target;
@@ -273,9 +275,31 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       if flags = arcs_for_direct_addressing then
         next_arc_using_direct_addressing label ~input
       else if flags = arcs_for_binary_search then
-          failwith "binary search not implemented yet"
-(*        next_arc_using_binary_search label ~input*)
+        failwith "binary search not implemented yet"
       else
         next_arc_using_linear_scan label ~flags ~input
     end
+
+  let read_linear_arcs_at_target ~flags ~input =
+    let rec loop flags =
+      Printf.printf "inside loop\n";
+      let (arc, next_arc) = read_linear_arc ~flags ~input in
+      match next_arc with
+      | Some _ ->
+         let flags = Data_input.read_byte input |> int_of_char in
+         arc::(loop flags)
+      | None -> [arc] in
+    loop flags
+
+  let read_arcs_at_target ~fst_reader target =
+    let input = fst_reader.di in
+    assert (target > 0 );
+    Data_input.set_position input target;
+    let flags = Data_input.read_byte input |> int_of_char in
+    if flags = arcs_for_direct_addressing then
+      failwith "direct addressing not implemented yet"
+    else if flags = arcs_for_binary_search then
+      failwith "binary search not implemented yet"
+    else
+      read_linear_arcs_at_target ~flags ~input
 end

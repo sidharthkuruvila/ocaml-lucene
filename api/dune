@@ -1,0 +1,3 @@
+(library
+ (name lucene_api)
+ (libraries lucene_utils lucene_data_input lucene_codec))

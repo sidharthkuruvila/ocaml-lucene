@@ -1,0 +1,3 @@
+(executable
+ (name lucene_benchmarks)
+ (libraries unix))

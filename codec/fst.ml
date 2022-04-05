@@ -2,6 +2,7 @@ open Lucene_data_input
 open Lucene_utils
 
 let arcs_for_direct_addressing = 1 lsl 6
+let arcs_for_binary_search = 1 lsl 5
 let bit_last_arc = 1 lsl 1
 let bit_final_arc = 1 lsl 0
 
@@ -176,8 +177,44 @@ let next_arc_using_direct_addressing label ~input =
         next_arc;
       }
 
+let read_label ~input =
+  Reversed_index_input.read_byte input
+
+let next_arc_using_binary_search label ~input =
+  let num_arcs = Reversed_index_input.read_vint input in
+  let bytes_per_arc = Reversed_index_input.read_vint input in
+  let pos_arcs_start = Reversed_index_input.get_position input in
+  let low = 1 in
+  let high = num_arcs in
+  let rec search low high =
+     if low >= high  then
+       None
+     else
+       let mid = (low + high) / 2 in
+       Reversed_index_input.set_position input (pos_arcs_start - bytes_per_arc * mid);
+       let cur_label = read_label ~input in
+       if cur_label = label then
+         failwith "Need to implement arc reading logic"
+       else if cur_label < label then
+          search (mid + 1) high
+       else
+          search low (mid + 1) in
+  search low high
+
+
+
+(*
+  let read_arc () =
+    let arc_flags = Reversed_index_input.read_byte input in
+    let cur_label = read_label ~input in
+
+  if cur_label = label then
+     failwith "Need to implement linear arc reading logic"
+  else
+     failwith "Need to implement this too"
+*)
 let next_arc label ~input ~arc =
-  (* If the target is either 1 or 0
+  (* If the target is either -1 or 0
      there are no following arcs. *)
   if arc.Arc.target <= 0 then
     None
@@ -196,8 +233,12 @@ let next_arc label ~input ~arc =
     print_endline "done reading flags";
     if flags = arcs_for_direct_addressing then
       next_arc_using_direct_addressing label ~input
+    else if flags = arcs_for_binary_search then
+      next_arc_using_binary_search label ~input
+    (*else if flags = arcs_for_direct_addressing then
+      next_arc_using_linear_scan label ~input*)
     else
-      failwith "not implemented yet, only next_arc_using_direct_addressing has been implemented"
+      failwith @@ Printf.sprintf "%d not implemented yet, only next_arc_using_direct_addressing has been implemented" flags
   end
 
 let fst_match_term ~fst term =

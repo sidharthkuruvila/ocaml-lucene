@@ -4,6 +4,9 @@ module type S = sig
   val read_byte : t -> int
   val read_bytes : t -> int -> string
   val get_byte : t -> int -> int
+  val skip_bytes : t -> int -> unit
+
+  val get_position : t -> int
   val set_position : t -> int -> unit
   val copy: t -> t
 
@@ -57,6 +60,10 @@ end
 
 module Make(M : Data_input_ops) = struct
   include M
+  type t = M.t
+
+  let skip_bytes di n = ignore(read_bytes di n)
+
   let read_int di =
     let b1 = read_byte di in
     let b2 = read_byte di in

@@ -43,17 +43,6 @@ module Block_term_state = struct
       skip_offset = None;
   }
 
-(*  let show state =*)
-(*    let {*)
-(*      doc_freq; total_term_freq; metadata_upto; doc_start_fp; pos_start_fp;*)
-(*      pay_start_fp; singleton_doc_id; last_pos_block_offset; skip_offset;*)
-(*    } = state in*)
-(*    Printf.sprintf "BlockTermState { doc_freq: %d; total_term_freq: %d; metadata_upto: %d; doc_start_fp: %d; pos_start_fp: %d; pay_start_fp: %d; singleton_doc_id: %d; last_pos_block_offset: %d; skip_offset: %d }"*)
-(*     doc_freq total_term_freq metadata_upto doc_start_fp pos_start_fp pay_start_fp*)
-(*     (match singleton_doc_id with | None -> -1 | Some n -> n)*)
-(*     (match last_pos_block_offset with | None -> -1 | Some n -> n)*)
-(*     (match skip_offset with | None -> -1 | Some n -> n)*)
-
 end
 
 module Index_iterator = struct
@@ -169,7 +158,7 @@ let decode_postings_term ~field_info ~postings_reader ~term_state =
     skip_offset;
   }
 
-let decode_metadata ~field_info ~limit ~stats_reader ~postings_reader=
+let decode_metadata ~field_info ~limit ~stats_reader ~postings_reader =
   let rec loop ~singleton_run_length  ~term_state n =
     if n > limit then
       term_state

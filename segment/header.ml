@@ -24,6 +24,14 @@ module Lucene_version = struct
 end
 
 
+let string_to_int_list_string s =
+  let ls = String.to_seq s
+  |> List.of_seq
+  |> List.map (fun c -> c |> int_of_char |> string_of_int)
+  |> String.concat "; " in
+  Printf.sprintf "[ %s ]" ls
+
+
 module Check_index_header_errors = struct
   type t =
   | Incorrect_codec_name of { expected: String.t; found: String.t }
@@ -39,7 +47,8 @@ module Check_index_header_errors = struct
     | Unsupported_version { expected_min; expected_max; found } ->
       Printf.sprintf "Unsupported expected version in range (%d, %d) got '%d'" expected_min expected_max found
     | Incorrect_id { expected; found } ->
-      Printf.sprintf "Incorrect id expected '%s' got '%s'" expected found
+      Printf.sprintf "Incorrect id expected '%s' got '%s'"
+      (string_to_int_list_string expected) (string_to_int_list_string found)
     | Incorrect_segment_suffix { expected; found } ->
       Printf.sprintf "Incorrect segment suffix expected '%s' got '%s'" expected found
 end
@@ -49,7 +58,7 @@ module Make(Data_input: Data_input.S) = struct
   let read_header di =
     let magic = Data_input.read_int di in
     let name = Data_input.read_string di in
-    let version = Data_input.read_int di in
+    let version = Data_input.read_uint di in
     let object_id = Data_input.read_bytes di 16 in
     let suffix_length = Data_input.read_byte di |> int_of_char in
     let suffix_bytes = Data_input.read_bytes di suffix_length in
@@ -60,16 +69,16 @@ module Make(Data_input: Data_input.S) = struct
     let minor = Data_input.read_vint di in
     let bugfix = Data_input.read_vint di in
     { Lucene_version.major; minor; bugfix }
-(*
-  let check_header ~codec_name ~min_version ~max_version di =
-    let magic = Data_input.read_int di in
+
+  let check_header_exn di ~codec_name ~min_version ~max_version  =
+    let magic = Data_input.read_uint di in
     let name = Data_input.read_string di in
-    let version = Data_input.read_int di in
+    let version = Data_input.read_uint di in
+    Printf.printf "header: magic: %d, name: %s, version: %d min_version: %d max_version: %d \n" magic name version min_version max_version;
     if magic <> codec_magic then failwith "Codec magic does not match";
     if name <> codec_name then failwith (Printf.sprintf "Header name %s did not match codec name %s" name codec_name);
     if min_version > version || version > max_version then failwith "Header version did not match expected"
 
-*)
 
   let check_footer di = begin
     if Data_input.length di - Data_input.get_position di <> footer_length then

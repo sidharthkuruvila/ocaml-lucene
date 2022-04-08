@@ -162,3 +162,6 @@ module Make(Data_input: Data_input.S) = struct
       has_offsets;
     }
 end
+
+let get_field { field_infos; _ } n =
+  List.find (fun field_info -> field_info.Field_info.field_number = n) field_infos

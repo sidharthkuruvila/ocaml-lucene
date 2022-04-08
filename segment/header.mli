@@ -45,6 +45,8 @@ module Make(Data_input: Data_input.S): sig
 
    It throws an exception if the contents of an index header are invalid. *)
 
+  val check_header_exn: Data_input.t -> codec_name: String.t -> min_version: int -> max_version: int -> unit
+
   val check_footer: Data_input.t -> unit
   (** [check_footer data_input] checks if the footer is valid.
 

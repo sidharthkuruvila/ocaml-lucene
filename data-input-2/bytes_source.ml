@@ -8,6 +8,7 @@ module type S = sig
 
   val get_position : t -> int
   val set_position : t -> int -> unit
+  val length : t -> int
   val copy: t -> t
 end
 
@@ -44,6 +45,9 @@ module Make(M: Bytes_intf.S) = struct
   let get_position di = di.idx
 
   let set_position di idx = di.idx <- idx
+
+  let length di =
+    M.length di.data
 
   let skip_bytes = inc_idx
 end

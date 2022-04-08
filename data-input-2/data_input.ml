@@ -8,9 +8,11 @@ module type S = sig
 
   val get_position : t -> int
   val set_position : t -> int -> unit
+  val length : t -> int
   val copy: t -> t
 
   val read_int : t -> int
+  val read_uint : t -> int
   val read_long : t -> int
   val read_vlong : t -> int
   val read_vint : t -> int
@@ -32,6 +34,15 @@ module Make(M : Bytes_source.S) = struct
     let b4 = read_byte di in
     let n = logor (shift_left b4 24)  (logor (shift_left b3 16) (logor (shift_left b2  8) b1)) in
     Int32.to_int n
+
+  let read_uint di =
+    let read_byte di =
+      read_byte di |> int_of_char in
+    let b1 = read_byte di in
+    let b2 = read_byte di in
+    let b3 = read_byte di in
+    let b4 = read_byte di in
+    (b1 lsl 24) lor (b2 lsl 16) lor (b3 lsl 8) lor b4
 
   (* This will truncate the 64 bit long to fit into the space avilable to an int *)
   let read_long di =
@@ -100,9 +111,7 @@ module Make(M : Bytes_source.S) = struct
         []
       else
         let k = read_string di in
-        Printf.printf "Key = %s\n" k;
         let v = read_string di in
-        Printf.printf "Value = %s\n" v;
         (k, v) :: loop (n - 1) in
     loop count
 

@@ -12,7 +12,7 @@ module Index_header = struct
     version: int;
     object_id: string;
     suffix_bytes: string
-  } [@@deriving show]
+  } [@@deriving show, eq]
 end
 
 module Lucene_version = struct
@@ -20,7 +20,7 @@ module Lucene_version = struct
     major: int;
     minor: int;
     bugfix: int;
-  } [@@deriving show]
+  } [@@deriving show, eq]
 end
 
 
@@ -30,7 +30,7 @@ module Check_index_header_errors = struct
   | Unsupported_version of { expected_min: int; expected_max: int; found: int }
   | Incorrect_id of { expected: String.t; found: String.t }
   | Incorrect_segment_suffix of { expected: String.t; found: String.t }
-  [@@deriving show]
+  [@@deriving show, eq]
 
   let to_string error =
     match error with
@@ -71,11 +71,10 @@ module Make(Data_input: Data_input.S) = struct
 
 *)
 
-
   let check_footer di = begin
     if Data_input.length di - Data_input.get_position di <> footer_length then
       failwith "Invalid footer length";
-    let magic = Data_input.read_int di in
+    let magic = Data_input.read_uint di land int32_mask in
     if magic <> footer_magic then
       failwith "Invalid footer magic"
   end
@@ -97,5 +96,6 @@ module Make(Data_input: Data_input.S) = struct
 
   let check_index_header_exn data_input ~codec_name ~min_version ~max_version ~expected_id ~segment_suffix =
     check_index_header data_input ~codec_name ~min_version ~max_version ~expected_id ~segment_suffix
-    |> Option.iter (fun error -> Printf.printf "Index header check failed: %s" (Check_index_header_errors.to_string error))
+    |> Option.iter (fun error -> failwith
+      (Printf.sprintf "Index header check failed: %s" (Check_index_header_errors.to_string error)))
 end

@@ -1,0 +1,4 @@
+(library
+ (name lucene_segment)
+ (libraries lucene_data_input_2)
+ (preprocess (pps ppx_deriving.show ppx_deriving.eq)))

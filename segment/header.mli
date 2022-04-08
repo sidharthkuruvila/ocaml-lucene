@@ -1,16 +1,25 @@
 open Lucene_data_input_2
 
-
 module Index_header: sig
-  type t [@@deriving show]
+  type t = {
+    magic: int;
+    name: string;
+    version: int;
+    object_id: string;
+    suffix_bytes: string
+  }[@@deriving show, eq]
 end
 
 module Lucene_version: sig
-  type t [@@deriving show]
+  type t = {
+    major: int;
+    minor: int;
+    bugfix: int;
+  }[@@deriving show, eq]
 end
 
 module Check_index_header_errors: sig
-  type t [@@deriving show]
+  type t [@@deriving show, eq]
   (** The type representing index header validation errors *)
 
   val to_string: t -> String.t

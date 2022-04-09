@@ -43,4 +43,6 @@ module Make(M: Bytes_intf.S) = struct
   let set_position di idx = di.idx <- idx
 
   let skip_bytes = decr_idx
+
+  let length { data; _ } = M.length data
 end

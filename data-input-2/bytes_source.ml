@@ -23,6 +23,8 @@ module Make(M: Bytes_intf.S) = struct
     idx = 0;
   }
 
+  let to_bytes di = di.data
+
   let copy di = {di with idx = di.idx}
 
   let get_byte di i =

@@ -121,6 +121,7 @@ module Make(Data_input: Data_input.S) = struct
       index_length;
       terms_length;
     }
-
-
 end
+
+let find_field_by_id { field_metas; _ } id =
+  List.find (fun { Field_meta.field_id; _ } -> field_id = id) field_metas

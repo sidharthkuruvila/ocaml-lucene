@@ -71,7 +71,6 @@ module Doc_values_types = struct
     | _ -> failwith "Code does not match"
 end
 
-
 module Field_info = struct
   type t = {
     name: string;
@@ -165,3 +164,6 @@ end
 
 let get_field { field_infos; _ } n =
   List.find (fun field_info -> field_info.Field_info.field_number = n) field_infos
+
+let find_field_by_name { field_infos; _ } name =
+  List.find (fun field_info -> field_info.Field_info.name = name) field_infos

@@ -6,4 +6,5 @@ let () =
     "Bytes source", Test_bytes_source.tests;
     "Data input", Test_data_input.tests;
     "Reverse bytes source", Test_reverse_bytes_source.tests;
+    "Sliced bytes", Test_sliced_bytes.tests;
   ]

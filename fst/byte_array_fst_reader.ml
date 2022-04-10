@@ -102,7 +102,96 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       Data_input.get_byte input n in
     count_bits ~get_byte_at byte_count
 
-  let next_arc_using_direct_addressing label ~(input: Data_input.t) =
+  module Direct_addressing_node_info = struct
+    type t = {
+      num_arcs: int;
+      bytes_per_arc: int;
+      bit_table_start: int;
+      presence_byte_count: int;
+      first_label: int;
+      arc_start: int;
+    }
+  end
+
+  let read_direct_addressing_node_info ~input =
+    let num_arcs = Data_input.read_vint input in
+    let bytes_per_arc = Data_input.read_vint input in
+    let bit_table_start = Data_input.get_position input in
+    let presence_byte_count = (num_arcs + 7) lsr 3 in
+    Data_input.skip_bytes input presence_byte_count;
+    let first_label = Data_input.read_byte input |> int_of_char in
+    let arc_start = Data_input.get_position input in
+    { Direct_addressing_node_info.
+      num_arcs;
+      bytes_per_arc;
+      bit_table_start;
+      presence_byte_count;
+      first_label;
+      arc_start;
+    }
+
+  let read_direct_addressing_arc label { Direct_addressing_node_info.presence_byte_count; bit_table_start; bytes_per_arc; arc_start; _ } ~input =
+    let flags = Data_input.read_byte input |> int_of_char in
+    let output = if check_flag flags bit_arc_has_output then
+        Output_reader.read input
+      else
+        Output.empty in
+    let final_output = if check_flag flags bit_arc_has_final_output then
+        Output_reader.read input
+      else
+        Output.empty in
+    let is_stop_node = check_flag flags bit_stop_node in
+    let is_final_arc = check_flag flags bit_final_arc in
+    if is_stop_node then begin
+      let next_arc = Some (Data_input.get_position input) in
+      ({
+         Arc.label;
+         target = if is_final_arc then -1 else 0;
+         output;
+         final_output;
+      }, next_arc)
+    end else if check_flag flags bit_target_next then
+      let target, next_arc = if check_flag flags bit_last_arc then
+          (Data_input.get_position input, None)
+        else
+          let arc_count = count_bits presence_byte_count ~input ~bit_table_start in
+          Printf.printf "arc count: %d\n" arc_count;
+          (arc_start - bytes_per_arc * arc_count, Some (Data_input.get_position input)) in
+      ({
+        Arc.label;
+        target;
+        output;
+        final_output;
+      }, next_arc)
+    else
+      let target = Data_input.read_vlong input in
+      let next_arc = Some (Data_input.get_position input) in
+      ({
+        Arc.label;
+        target;
+        output;
+        final_output;
+      }, next_arc)
+
+  let find_direct_addressing_arc_for_label label node_info ~input =
+    let { Direct_addressing_node_info.
+      num_arcs;
+      first_label;
+      bit_table_start;
+      arc_start;
+      bytes_per_arc; _
+    } = node_info in
+    let arc_index = label - first_label in
+    if arc_index < 0 || arc_index >= num_arcs then
+      None
+    else if not (is_bit_set arc_index ~input ~bit_table_start) then
+      None
+    else
+      let presence_index = count_bits_upto arc_index ~input ~bit_table_start in
+      Data_input.set_position input (arc_start - presence_index * bytes_per_arc);
+      Some (read_direct_addressing_arc label node_info ~input)
+
+  let next_arc_using_direct_addressing label ~input =
     (* The arcs are layed out for direct addressing. This
        is a two step process.
 
@@ -121,61 +210,13 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
        presence_index the index of the arc in the arc list
 
        *)
-    let num_arcs = Data_input.read_vint input in
-    let bytes_per_arc = Data_input.read_vint input in
-    let bit_table_start = Data_input.get_position input in
-    let presence_byte_count = (num_arcs + 7) lsr 3 in
+    let node_info = read_direct_addressing_node_info ~input in
+    let { Direct_addressing_node_info.
+      presence_byte_count;
+      _
+    } = node_info in
     Data_input.skip_bytes input presence_byte_count;
-    let first_label = Data_input.read_byte input |> int_of_char in
-    let pos_arc_start = Data_input.get_position input in
-    let arc_index = label - first_label in
-    if arc_index < 0 || arc_index >= num_arcs then
-      None
-    else if not (is_bit_set arc_index ~input ~bit_table_start) then
-      None
-    else
-      let presence_index = count_bits_upto arc_index ~input ~bit_table_start in
-      Data_input.set_position input (pos_arc_start - presence_index * bytes_per_arc);
-      let flags = Data_input.read_byte input |> int_of_char in
-      let output = if check_flag flags bit_arc_has_output then
-          Output_reader.read input
-        else
-          Output.empty in
-      let final_output = if check_flag flags bit_arc_has_final_output then
-          Output_reader.read input
-        else
-          Output.empty in
-      let is_stop_node = check_flag flags bit_stop_node in
-      let is_final_arc = check_flag flags bit_final_arc in
-      if is_stop_node then begin
-        let next_arc = Some (Data_input.get_position input) in
-        Some ({
-           Arc.label;
-           target = if is_final_arc then -1 else 0;
-           output;
-           final_output;
-        }, next_arc)
-      end else if check_flag flags bit_target_next then
-        let target, next_arc = if check_flag flags bit_last_arc then
-            (Data_input.get_position input, None)
-          else
-            let arc_count = count_bits presence_byte_count ~input ~bit_table_start in
-            (pos_arc_start - bytes_per_arc * arc_count, Some (Data_input.get_position input)) in
-        Some ({
-          Arc.label;
-          target;
-          output;
-          final_output;
-        }, next_arc)
-      else
-        let target = Data_input.read_vlong input in
-        let next_arc = Some (Data_input.get_position input) in
-        Some ({
-          Arc.label;
-          target;
-          output;
-          final_output;
-        }, next_arc)
+    find_direct_addressing_arc_for_label label node_info ~input
 
   let read_label ~input =
     Data_input.read_byte input |> int_of_char
@@ -306,10 +347,26 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       | None -> [arc] in
     loop flags
 
+  let read_direct_addressing_arcs_at_target ~input =
+    let node_info = read_direct_addressing_node_info ~input in
+    let { Direct_addressing_node_info.num_arcs; arc_start; bytes_per_arc; first_label; _ } = node_info in
+    let rec loop n =
+      if n = num_arcs then
+        []
+      else
+        let arc_position = arc_start + n * bytes_per_arc in
+        Data_input.set_position input arc_position;
+        let label = first_label + n in
+        let next_arc = find_direct_addressing_arc_for_label label node_info ~input in
+        match next_arc with
+        | None -> loop (n + 1)
+        | Some (arc, _) -> arc :: loop (n + 1) in
+    loop 0
+
   let read_arcs_at_target ~fst_reader target =
     let input = fst_reader.di in
     let use_direct_addressing () =
-      failwith "direct addressing not implemented yet" in
+      read_direct_addressing_arcs_at_target ~input in
     let use_binary_search () =
       failwith "binary search not implemented yet" in
     let use_linear_scan flags =

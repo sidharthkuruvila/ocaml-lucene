@@ -1,4 +1,4 @@
-module Make(Src_bytes: Bytes_intf.S): sig
-   include Bytes_intf.S
+module Make(Src_bytes: Byte_array.S): sig
+   include Byte_array.S
    val slice: Src_bytes.t -> int -> int -> t
 end

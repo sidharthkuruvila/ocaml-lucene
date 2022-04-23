@@ -7,7 +7,7 @@ let rev_bytes bytes =
    Bytes.set bytes i u
   done
 
-module Make(M: Bytes_intf.S) = struct
+module Make(M: Byte_array.S) = struct
   type t = {
     data: M.t;
     mutable idx: Int.t

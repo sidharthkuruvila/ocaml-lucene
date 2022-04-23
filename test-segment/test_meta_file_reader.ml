@@ -1,9 +1,6 @@
 open Lucene_data_input_2
 open Lucene_segment
 
-module Mmapped_file_bytes_source = Bytes_source.Make(Mmapped_file_bytes)
-module Mmapped_file_data_input = Data_input.Make(Mmapped_file_bytes_source)
-
 let with_fd filename ~f =
   let fd = Unix.openfile filename [Unix.O_RDONLY] 0 in
   ignore (f fd);
@@ -110,7 +107,7 @@ let field_infos = { Field_infos_reader.field_infos =
 let test_read () =
   with_fd segment_file_name ~f:(fun fd ->
     let bytes_source = Mmapped_file_bytes.from_fd fd in
-    let data_input = Mmapped_file_bytes_source.of_bytes bytes_source in
+    let data_input = Mmapped_file_data_input.of_bytes bytes_source in
     let segment_id = [ 61; 20; 221; 26; 252; 52; 191; 141; 200; 188; 60; 92; 151; 43; 50; 57 ]
       |> List.map char_of_int |> List.to_seq |> String.of_seq in
     let version = 6 in

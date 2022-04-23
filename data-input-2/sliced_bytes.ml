@@ -1,5 +1,5 @@
 
-module Make(Src_bytes: Bytes_intf.S) = struct
+module Make(Src_bytes: Byte_array.S) = struct
   type t = {
     src: Src_bytes.t;
     start: int;

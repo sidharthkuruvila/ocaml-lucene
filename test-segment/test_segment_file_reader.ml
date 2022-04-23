@@ -1,9 +1,6 @@
 open Lucene_data_input_2
 open Lucene_segment
 
-module Mmapped_file_bytes_source = Bytes_source.Make(Mmapped_file_bytes)
-module Mmapped_file_data_input = Data_input.Make(Mmapped_file_bytes_source)
-
 module Block_terms_dict = Segment_file_reader.Make(Mmapped_file_data_input)
 
 let with_fd filename ~f =
@@ -20,7 +17,7 @@ let segment_file_info = Alcotest.testable Segment_file_reader.pp Segment_file_re
 let test_read () =
   with_fd segment_file_name ~f:(fun fd ->
     let bytes_source = Mmapped_file_bytes.from_fd fd in
-    let data_input = Mmapped_file_bytes_source.of_bytes bytes_source in
+    let data_input = Mmapped_file_data_input.of_bytes bytes_source in
     let result = M.read ~data_input in
     let expected = {
       Segment_file_reader.index_header = {

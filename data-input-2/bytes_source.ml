@@ -12,7 +12,7 @@ module type S = sig
   val copy: t -> t
 end
 
-module Make(M: Bytes_intf.S) = struct
+module Make(M: Byte_array.S) = struct
   type t = {
     data: M.t;
     mutable idx: Int.t

@@ -363,12 +363,44 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
         | Some (arc, _) -> arc :: loop (n + 1) in
     loop 0
 
+  module Binary_search_node_info = struct
+    type t = {
+      num_arcs: int;
+      bytes_per_arc: int;
+      arc_start: int;
+    }
+  end
+
+  let read_binary_search_node_info ~input =
+    let num_arcs = Data_input.read_vint input in
+    let bytes_per_arc = Data_input.read_vint input in
+    let arc_start = Data_input.get_position input in
+    { Binary_search_node_info.
+      num_arcs;
+      bytes_per_arc;
+      arc_start
+    }
+
+  let read_binary_search_arcs_at_target ~input =
+    let node_info = read_binary_search_node_info ~input in
+    let { Binary_search_node_info.num_arcs; bytes_per_arc; arc_start } = node_info in
+    let rec loop n =
+      if n = num_arcs then
+        []
+      else
+        let arc_pos = arc_start - bytes_per_arc*n in
+        Data_input.set_position input arc_pos;
+        let flags = Data_input.read_byte input |> int_of_char in
+        let arc = read_linear_arc ~input ~flags |> fst in
+        arc :: loop (n + 1) in
+    loop 0
+
   let read_arcs_at_target ~fst_reader target =
     let input = fst_reader.di in
     let use_direct_addressing () =
       read_direct_addressing_arcs_at_target ~input in
     let use_binary_search () =
-      failwith "binary search not implemented yet" in
+      read_binary_search_arcs_at_target ~input in
     let use_linear_scan flags =
       read_linear_arcs_at_target ~flags ~input in
     use_node_search_strategy ~input target

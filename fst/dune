@@ -1,4 +1,4 @@
 (library
  (name lucene_fst)
- (libraries unix lucene_data_input_2 lucene_utils lucene_data_output)
+ (libraries unix lucene_data_input_2 lucene_data_output)
  (preprocess (pps ppx_deriving.show ppx_deriving.ord)))

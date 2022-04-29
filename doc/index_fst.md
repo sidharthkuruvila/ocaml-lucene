@@ -54,6 +54,12 @@ If bit_arc_has_final_output is set read final output bytes as a string
 If the bit_target_next flag is set simply jump to the next node by jumping to the end of the current one.
 Otherwise read the position from arc data as a vint.
 
+## Binary Search
+
+![FST binary search](images/fst-binary-search.png "Binary search")
+
+An arc can be be found using a binary search. 
+
 ## Linear Scan
 
 ![FST linear scan](images/fst-linear-scan.png "Linear Scan")

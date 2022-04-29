@@ -3,34 +3,28 @@ digraph G {
     label = "Start of node"
   ]
 
-  bit_table_start [
-    label = "Start of bit_table"
-  ]
-
   pos_arc_start [
     label = "Start of arc list"
   ]
 
-  direct_addressing_arc [
-    label = "{Direct Addressing Arc | <f0>0x40 :byte|num_arcs :vint|bytes_per_arc :vint| <f1>presence_bytes: byte[(num_arcs + 7) \>\>\> 3] | first_label: byte | <f2> arcs : byte[bytes_per_arc*count_bits(presence_bytes)]}"
+  binary_search_arc [
+    label = "{Binary Search Arc | <f0>0x20 :byte|num_arcs :vint|bytes_per_arc :vint| <f2> arcs : byte[bytes_per_arc*num_arcs]}"
     shape = "record"
   ]
 
-  start_of_node -> direct_addressing_arc:f0
+  start_of_node -> binary_search_arc:f0
 
-  bit_table_start -> direct_addressing_arc:f1
+  pos_arc_start -> binary_search_arc:f2
 
-  pos_arc_start -> direct_addressing_arc:f2
-
-  direct_addressing_arc:f2 -> arc
+  binary_search_arc:f2 -> arc
 
   arc [
-    label = "{Arc|<f0>flag_bits: byte| output: string? flag bit 4 is set | final_output: string? flag bit 5 is set|target: int? flag bits 2 and 3 are unset| Padding }"
+    label = "{Arc|<f0>flag_bits: byte| label: label | output: string? flag bit 4 is set | final_output: string? flag bit 5 is set|target: int? flag bits 2 and 3 are unset| Padding }"
     shape = "record"
   ]
 
   arc_flag_bits [
-    label = "{Arc flag bits|{ {0 | 1 | 2 | 3 | 4 | 5}| {Is final arc | Is last arc in node | Next node follows current node | Next node is stop | Arc has output | Arc has final output }}}"
+    label = "{Arc flag bits|{{0 | 1 | 2 | 3 | 4 | 5}| {Is final arc | Is last arc in node | Next node follows current node | Next node is stop | Arc has output | Arc has final output }}}"
     shape="record"
   ]
 

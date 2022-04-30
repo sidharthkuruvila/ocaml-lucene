@@ -221,29 +221,6 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
   let read_label ~input =
     Data_input.read_byte input |> int_of_char
 
-(*
-  let next_arc_using_binary_search label ~input =
-    let num_arcs = Data_input.read_vint input in
-    let bytes_per_arc = Data_input.read_vint input in
-    let pos_arcs_start = Data_input.get_position input in
-    let low = 1 in
-    let high = num_arcs in
-    let rec search low high =
-       if low >= high  then
-         None
-       else
-         let mid = (low + high) / 2 in
-         Data_input.set_position input (pos_arcs_start - bytes_per_arc * mid);
-         let cur_label = read_label ~input in
-         if cur_label = label then
-           failwith "Need to implement arc reading logic"
-         else if cur_label < label then
-            search (mid + 1) high
-         else
-            search low (mid + 1) in
-    search low high
-*)
-
   let skip_to_next_arc ~flags ~input =
     if check_flag flags bit_arc_has_output then ignore (Output_reader.read input);
     if check_flag flags bit_arc_has_final_output then ignore (Output_reader.read input);
@@ -308,6 +285,48 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
       if has_more_arcs then next_arc_using_linear_scan label ~flags ~input
       else None
 
+  module Binary_search_node_info = struct
+    type t = {
+      num_arcs: int;
+      bytes_per_arc: int;
+      arc_start: int;
+    }
+  end
+
+  let read_binary_search_node_info ~input =
+    let num_arcs = Data_input.read_vint input in
+    let bytes_per_arc = Data_input.read_vint input in
+    let arc_start = Data_input.get_position input in
+    { Binary_search_node_info.
+      num_arcs;
+      bytes_per_arc;
+      arc_start
+    }
+
+  let next_arc_using_binary_search label ~input =
+    let node_info = read_binary_search_node_info ~input in
+    let { Binary_search_node_info.num_arcs; bytes_per_arc; arc_start } = node_info in
+    let low = 0 in
+    let high = num_arcs in
+    let rec search low high =
+       if low >= high  then
+         None
+       else
+         let mid = (low + high) / 2 in
+         Data_input.set_position input (arc_start - bytes_per_arc * mid - 1);
+         let cur_label = read_label ~input in
+         Printf.printf "cur label = %c; label = %c\n" (char_of_int cur_label) (char_of_int label);
+         if cur_label = label then begin
+           Printf.printf "should be equal cur label = %c; label = %c\n" (char_of_int cur_label) (char_of_int label);
+           Data_input.set_position input (arc_start - bytes_per_arc * mid);
+           let flags = Data_input.read_byte input |> int_of_char in
+           Some (read_linear_arc ~input ~flags)
+         end else if cur_label < label then
+            search (mid + 1) high
+         else
+            search low mid in
+    search low high
+
   let use_node_search_strategy ~input target
     ~use_direct_addressing
     ~use_binary_search
@@ -327,7 +346,7 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
     let use_direct_addressing () =
       next_arc_using_direct_addressing label ~input in
     let use_binary_search () =
-      failwith "binary search not implemented yet" in
+      next_arc_using_binary_search label ~input in
     let use_linear_scan flags =
        next_arc_using_linear_scan label ~flags ~input in
     let target = arc.Arc.target in
@@ -362,24 +381,6 @@ module Make(Data_input: Data_input.S)(Output: Output.S)
         | None -> loop (n + 1)
         | Some (arc, _) -> arc :: loop (n + 1) in
     loop 0
-
-  module Binary_search_node_info = struct
-    type t = {
-      num_arcs: int;
-      bytes_per_arc: int;
-      arc_start: int;
-    }
-  end
-
-  let read_binary_search_node_info ~input =
-    let num_arcs = Data_input.read_vint input in
-    let bytes_per_arc = Data_input.read_vint input in
-    let arc_start = Data_input.get_position input in
-    { Binary_search_node_info.
-      num_arcs;
-      bytes_per_arc;
-      arc_start
-    }
 
   let read_binary_search_arcs_at_target ~input =
     let node_info = read_binary_search_node_info ~input in

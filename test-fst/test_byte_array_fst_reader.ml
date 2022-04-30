@@ -59,6 +59,44 @@ let test_running_an_fst () =
     Alcotest.(check int) test_message expected result
   ) inputs
 
+let test_running_an_fst_with_a_binary_search_node () =
+  let module O = Int_output_reader.Make(N) in
+  let module P = Byte_array_fst_reader.Make(N)(Int_output)(O) in
+  let module Q = Byte_array_fst_reader_utils.Make(P) in
+
+  let inputs = [
+    "D", 5;
+    "DB", 7;
+    "K", 12;
+    "KB", 3;
+    "O", 13;
+    "OB", 23;
+    "S", 2;
+    "SB", 10;
+    "a", 10;
+    "ab", 10;
+    "m", 12;
+    "mb", 14;
+    "z", 16;
+    "zb", 16;
+    "x", 0;
+    "c", 0;
+    "0", 0;
+    "Z", 0;
+  ] in
+  let bytes = read_whole_file "data/fst-5.bytes" in
+  let di = M.of_bytes bytes in
+  let start_node = 54 in
+  let empty_output = 0 in
+  let fst_reader = P.create ~di ~start_node ~empty_output in
+  List.iter (fun (input, expected) ->
+    let path = Q.fst_match_term ~fst_reader input in
+    let result = Q.make_output path in
+    let test_message = Printf.sprintf "Expect result %d for input \"%s\"" expected input in
+    Alcotest.(check int) test_message expected result
+  ) inputs
+
+
 let test_spelling_corrections () =
   let module O = String_output_reader.Make(N) in
   let module P = Byte_array_fst_reader.Make(N)(String_output)(O) in
@@ -110,13 +148,36 @@ let test_read_all_arcs_in_a_direct_addressing_node () =
     { label=102; target=5; output=10; final_output=0 }
   ] in
   let arcs = P.read_arcs_at_target ~fst_reader start_node in
-  Printf.printf "arcs: %s\n" (Arc.show_arcs ~show_output:Int_output.to_string arcs);
   Alcotest.(check int) "The node should contain two arcs\n" 5 (List.length arcs);
+  Alcotest.(check int) "The arcs should be expected\n" 0 (Arc.compare_arc_lists ~compare_outputs:Int_output.compare arcs expected_arcs)
+
+let test_read_all_arcs_in_a_binary_search_node () =
+  let module O = Int_output_reader.Make(N) in
+  let module P = Byte_array_fst_reader.Make(N)(Int_output)(O) in
+  let module Q = Byte_array_fst_reader_utils.Make(P) in
+  let bytes = read_whole_file "data/fst-5.bytes" in
+  let di = M.of_bytes bytes in
+  let start_node = 54 in
+  let empty_output = 0 in
+  let fst_reader = P.create ~di ~start_node ~empty_output in
+  let expected_arcs = [
+    { Arc.label=68; target=3; output=5; final_output=0 };
+    { label=75; target=5; output=3; final_output=9 };
+    { label=79; target=8; output=13; final_output=0 };
+    { label=83; target=11; output=2; final_output=0 };
+    { label=97; target=13; output=10; final_output=0 };
+    { label=109; target=16; output=12; final_output=0 };
+    { label=122; target=13; output=16; final_output=0 }
+  ] in
+  let arcs = P.read_arcs_at_target ~fst_reader start_node in
+  Alcotest.(check int) "The node should contain two arcs\n" 7 (List.length arcs);
   Alcotest.(check int) "The arcs should be expected\n" 0 (Arc.compare_arc_lists ~compare_outputs:Int_output.compare arcs expected_arcs)
 
 let tests = [
   "Run an fst", `Quick, test_running_an_fst;
+  "Ran an fst with a binary search node", `Quick, test_running_an_fst_with_a_binary_search_node;
   "Fun an fst for spelling corrections", `Slow, test_spelling_corrections;
   "Read all arcs in a linear node", `Quick, test_read_all_arcs_in_a_linear_node;
   "Read all arcs in a direct addressing node", `Quick, test_read_all_arcs_in_a_direct_addressing_node;
+  "Read all arcs in a binary search node", `Quick, test_read_all_arcs_in_a_binary_search_node;
 ]

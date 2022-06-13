@@ -1,23 +1,23 @@
 
 # Table of Contents
 
-1.  [Compression ranges](#org07688e6)
-    1.  [[0x1F,0x3F)](#orgbb9482a)
-    2.  [[0x5F,0x7F)](#org3e5b263)
-2.  [Compressing a string](#org11a94ef)
-    1.  [Shrink the byte to 6 bits](#org164826a)
-    2.  [Pack the extra bits](#org0ba2cfd)
-    3.  [Handle exceptional cases](#org136f6e0)
-        1.  [Count the number of exception](#orgbe7508d)
-        2.  [Write the exception location and value](#org223cddd)
-    4.  [Put it all together](#orgfbe29a1)
-3.  [Decompressing a compressed string](#org130dc56)
-    1.  [Create a byte array to uncompress into](#org2352804)
-    2.  [Copy the packed bytes into the byte array](#org6b161c7)
-    3.  [Unpack bits to their original positions](#org02ea990)
-    4.  [Convert each six bit value to its value in the original range](#org87765a9)
-    5.  [Put any exceptions back into the byte array](#orge2cd78e)
-    6.  [Put it all together](#orgc608a89)
+1.  [Compression ranges](#orga7c04bd)
+    1.  [[0x1F,0x3F)](#orgc0c6391)
+    2.  [[0x5F,0x7F)](#orga77491c)
+2.  [Compressing a string](#orgf1fb9c0)
+    1.  [Shrink the byte to 6 bits](#orgb7dcea8)
+    2.  [Pack the extra bits](#orgece5ead)
+    3.  [Handle exceptional cases](#org430751a)
+        1.  [Count the number of exception](#org16bce75)
+        2.  [Write the exception location and value](#orgdfb20e0)
+    4.  [Put it all together](#org3048088)
+3.  [Decompressing a compressed string](#org413a6e3)
+    1.  [Create a byte array to uncompress into](#orgc823e04)
+    2.  [Copy the packed bytes into the byte array](#org9533f40)
+    3.  [Unpack bits to their original positions](#org3360421)
+    4.  [Convert each six bit value to its value in the original range](#org5567608)
+    5.  [Put any exceptions back into the byte array](#orga5d6f14)
+    6.  [Put it all together](#org1c9f7a5)
 
 This compression scheme can be used shrink byte strings that predominantly contain
 lowercase ascii characters and digits.
@@ -25,47 +25,37 @@ lowercase ascii characters and digits.
     let input_string = "This is a simple compressible string. It contains a number of capitalized letters."
 
 
-<a id="org07688e6"></a>
+<a id="orga7c04bd"></a>
 
 # Compression ranges
 
 Compression occurs for elements in two 32 element ranges [0x1F,0x3F) and [0x5F,0x7F)
 
 
-<a id="orgbb9482a"></a>
+<a id="orgc0c6391"></a>
 
 ## [0x1F,0x3F)
 
 Contains the characters
 
-    Line 3, characters 22-24:
-    3 | |> String.concat ~sep:"";;
-                              ^^
-    Error: The function applied to this argument has type
-             string -> string list -> string
-    This argument cannot be applied with label ~sep
+     !"#$%&'()*+,-./0123456789:;<=>
 
 
-<a id="org3e5b263"></a>
+<a id="orga77491c"></a>
 
 ## [0x5F,0x7F)
 
 Contains the characters
 
-    Line 3, characters 22-24:
-    3 | |> String.concat ~sep:"";;
-                              ^^
-    Error: The function applied to this argument has type
-             string -> string list -> string
-    This argument cannot be applied with label ~sep
+    _`abcdefghijklmnopqrstuvwxyz{|}~
 
 
-<a id="org11a94ef"></a>
+<a id="orgf1fb9c0"></a>
 
 # Compressing a string
 
 
-<a id="org164826a"></a>
+<a id="orgb7dcea8"></a>
 
 ## Shrink the byte to 6 bits
 
@@ -76,41 +66,92 @@ marking which range the byte belongs to. When the bit is set the bits are from t
       let b = byte + 1 in
       (b land 0x1F) lor (b land 0x40) lsr 1
 
-    Lines 4-13, characters 6-3:
-     4 | ......x ->
-     5 |   [
-     6 |     Printf.sprintf "%c" (char_of_int x);
-     7 |     Printf.sprintf "0x%0X" x;
-     8 |     int_to_bits_string x;
-     9 |     int_to_bits_string (x+1);
-    10 |     int_to_bits_string ((0x40 land (x+1)) lsr 1);
-    11 |     int_to_bits_string (0x1F land (x+1));
-    12 |     int_to_bits_string ( ((0x40 land (x+1)) lsr 1) lor  (0x1F land (x+1)) )
-    13 |   ]....
-    Error: The function applied to this argument has type
-             ('a -> 'b) -> 'a list -> 'b list
-    This argument cannot be applied with label ~f
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-left" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+</colgroup>
+<tbody>
+<tr>
+<td class="org-left">Char</td>
+<td class="org-right">Hex</td>
+<td class="org-right">x</td>
+<td class="org-right">x + 1</td>
+<td class="org-right">Range flag</td>
+<td class="org-right">Range bits</td>
+<td class="org-right">Shrunk bits</td>
+</tr>
+
+
+<tr>
+<td class="org-left">a</td>
+<td class="org-right">0x61</td>
+<td class="org-right">01100001</td>
+<td class="org-right">01100010</td>
+<td class="org-right">00100000</td>
+<td class="org-right">00000010</td>
+<td class="org-right">00100010</td>
+</tr>
+
+
+<tr>
+<td class="org-left">b</td>
+<td class="org-right">0x62</td>
+<td class="org-right">01100010</td>
+<td class="org-right">01100011</td>
+<td class="org-right">00100000</td>
+<td class="org-right">00000011</td>
+<td class="org-right">00100011</td>
+</tr>
+
+
+<tr>
+<td class="org-left">&gt;</td>
+<td class="org-right">0x3E</td>
+<td class="org-right">00111110</td>
+<td class="org-right">00111111</td>
+<td class="org-right">00000000</td>
+<td class="org-right">00011111</td>
+<td class="org-right">00011111</td>
+</tr>
+
+
+<tr>
+<td class="org-left">0</td>
+<td class="org-right">0x30</td>
+<td class="org-right">00110000</td>
+<td class="org-right">00110001</td>
+<td class="org-right">00000000</td>
+<td class="org-right">00010001</td>
+<td class="org-right">00010001</td>
+</tr>
+</tbody>
+</table>
 
 Before shrinking 'a' will be
 
-    Line 1, characters 19-37:
-    1 | int_of_char 'a' |> int_to_bits_string;;
-                           ^^^^^^^^^^^^^^^^^^
-    Error: Unbound value int_to_bits_string
+    01100001
 
 After shrinking 'a' will be
 
-    Line 1, characters 33-51:
-    1 | shrink_char (int_of_char 'a') |> int_to_bits_string;;
-                                         ^^^^^^^^^^^^^^^^^^
-    Error: Unbound value int_to_bits_string
+    00100010
 
 Shrinking will also apply to out of range characters, so 'A' shrinks to.
 
-    Line 1, characters 33-51:
-    1 | shrink_char (int_of_char 'A') |> int_to_bits_string;;
-                                         ^^^^^^^^^^^^^^^^^^
-    Error: Unbound value int_to_bits_string
+    00100010
 
 The value will be present in the final compressed array but will be replaced by a valid byte from an
 exceptions list.
@@ -122,13 +163,10 @@ Shrink the input string
 
     let shrunk_string = shrink input_string
 
-    Line 1, characters 20-26:
-    1 | let shrunk_string = shrink input_string;;
-                            ^^^^^^
-    Error: Unbound value shrink
+    5)*4*4"4*.1-&$0.13&44*#-&453*/(*5$0/5"*/4"/6.#&30'$"1*5"-*;&%-&55&34
 
 
-<a id="org0ba2cfd"></a>
+<a id="orgece5ead"></a>
 
 ## Pack the extra bits
 
@@ -174,8 +212,14 @@ and b4 and b5 into the third.
       String.iter packed ~f:(fun c -> Printf.printf "%s\n" (int_to_bits_string (int_of_char c)))
     end
 
+    Size after packing: 3
+    Packed bytes:
+    11111111
+    10101010
+    01010101
 
-<a id="org136f6e0"></a>
+
+<a id="org430751a"></a>
 
 ## Handle exceptional cases
 
@@ -186,7 +230,7 @@ If the distance is more that 256 bytes, the 256th byte is treated as an exceptio
       (0x1F < c && c <= 0x3F) || (0x5F < c && c <= 0x7F)
 
 
-<a id="orgbe7508d"></a>
+<a id="org16bce75"></a>
 
 ### Count the number of exception
 
@@ -207,10 +251,7 @@ The following string contains two exceptions
     let short_string = "This is a Short strings?";;
     let short_string_exception_count = exception_count short_string
 
-    Line 1, characters 35-50:
-    1 | let short_string_exception_count = exception_count short_string;;
-                                           ^^^^^^^^^^^^^^^
-    Error: Unbound value exception_count
+    2
 
 This longer string contains 9 exceptions
 
@@ -224,13 +265,10 @@ This longer string contains 9 exceptions
     let long_string = Buffer.contents buf;;
     let long_string_exception_count = exception_count long_string
 
-    Line 1, characters 34-49:
-    1 | let long_string_exception_count = exception_count long_string;;
-                                          ^^^^^^^^^^^^^^^
-    Error: Unbound value exception_count
+    9
 
 
-<a id="org223cddd"></a>
+<a id="orgdfb20e0"></a>
 
 ### Write the exception location and value
 
@@ -249,10 +287,23 @@ This longer string contains 9 exceptions
 
 The exceptions for the short string
 
+    Index: 0, Value: 'T'
+    Index: 10, Value: 'S'
+
 The exceptions for the long string
 
+    Index: 255, Value: 't'
+    Index: 255, Value: 't'
+    Index: 10, Value: 'T'
+    Index: 255, Value: 't'
+    Index: 255, Value: 't'
+    Index: 11, Value: 'T'
+    Index: 255, Value: 't'
+    Index: 255, Value: 't'
+    Index: 11, Value: 'T'
 
-<a id="orgfbe29a1"></a>
+
+<a id="org3048088"></a>
 
 ## Put it all together
 
@@ -268,12 +319,12 @@ The exceptions for the long string
     let compressed = compress input_string;;
 
 
-<a id="org130dc56"></a>
+<a id="org413a6e3"></a>
 
 # Decompressing a compressed string
 
 
-<a id="org2352804"></a>
+<a id="orgc823e04"></a>
 
 ## Create a byte array to uncompress into
 
@@ -284,14 +335,14 @@ The exceptions for the long string
     let bytes = Bytes.create uncompressed_length
 
 
-<a id="org6b161c7"></a>
+<a id="org9533f40"></a>
 
 ## Copy the packed bytes into the byte array
 
     Bytes.From_string.blito ~src:compressed ~src_len:packed_bytes_start ~dst:bytes ();;
 
 
-<a id="org02ea990"></a>
+<a id="org3360421"></a>
 
 ## Unpack bits to their original positions
 
@@ -304,33 +355,87 @@ The exceptions for the long string
     done
 
 
-<a id="org87765a9"></a>
+<a id="org5567608"></a>
 
 ## Convert each six bit value to its value in the original range
 
     let unshrink_char b =
       (((b land 0x20) lsl 1) lor 0x20 lor (b land 0x1F)) - 1
 
-    Lines 4-12, characters 20-8:
-     4 | ....................x ->
-     5 |        [
-     6 |          int_to_bits_string x;
-     7 |          int_to_bits_string ((x land 0x20) lsl 1);
-     8 |          int_to_bits_string (x land 0x1F);
-     9 |          int_to_bits_string (((x land 0x20) lsl 1) lor 0x20 lor (x land 0x1F));
-    10 |          int_to_bits_string (unshrink_char x);
-    11 |          Printf.sprintf "%c" (unshrink_char x |> char_of_int)
-    12 |        ]...
-    Error: The function applied to this argument has type
-             ('a -> 'b) -> 'a list -> 'b list
-    This argument cannot be applied with label ~f
+<table border="2" cellspacing="0" cellpadding="6" rules="groups" frame="hsides">
+
+
+<colgroup>
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-right" />
+
+<col  class="org-left" />
+</colgroup>
+<tbody>
+<tr>
+<td class="org-right">00100010</td>
+<td class="org-right">01000000</td>
+<td class="org-right">00000010</td>
+<td class="org-right">01100010</td>
+<td class="org-right">01100001</td>
+<td class="org-left">a</td>
+</tr>
+
+
+<tr>
+<td class="org-right">00100011</td>
+<td class="org-right">01000000</td>
+<td class="org-right">00000011</td>
+<td class="org-right">01100011</td>
+<td class="org-right">01100010</td>
+<td class="org-left">b</td>
+</tr>
+
+
+<tr>
+<td class="org-right">00011111</td>
+<td class="org-right">00000000</td>
+<td class="org-right">00011111</td>
+<td class="org-right">00111111</td>
+<td class="org-right">00111110</td>
+<td class="org-left">&gt;</td>
+</tr>
+
+
+<tr>
+<td class="org-right">00010001</td>
+<td class="org-right">00000000</td>
+<td class="org-right">00010001</td>
+<td class="org-right">00110001</td>
+<td class="org-right">00110000</td>
+<td class="org-left">0</td>
+</tr>
+
+
+<tr>
+<td class="org-right">00101101</td>
+<td class="org-right">01000000</td>
+<td class="org-right">00001101</td>
+<td class="org-right">01101101</td>
+<td class="org-right">01101100</td>
+<td class="org-left">l</td>
+</tr>
+</tbody>
+</table>
 
     for i = 0 to (Bytes.length bytes - 1) do
       Bytes.set bytes i (unshrink_char (Bytes.get bytes i |> int_of_char) |> char_of_int)
     done
 
 
-<a id="orge2cd78e"></a>
+<a id="orga5d6f14"></a>
 
 ## Put any exceptions back into the byte array
 
@@ -351,13 +456,10 @@ The exceptions for the long string
 
     bytes
 
-    Line 1, characters 0-5:
-    1 | bytes;;
-        ^^^^^
-    Error: Unbound value bytes
+    "This is a simple compressible string. It contains a number of capitalized letters."
 
 
-<a id="orgc608a89"></a>
+<a id="org1c9f7a5"></a>
 
 ## Put it all together
 
@@ -395,8 +497,5 @@ The exceptions for the long string
 
     uncompress (String.length input_string) compressed
 
-    Line 1, characters 0-10:
-    1 | uncompress (String.length input_string) compressed;;
-        ^^^^^^^^^^
-    Error: Unbound value uncompress
+    This is a simple compressible string. It contains a number of capitalized letters.
 

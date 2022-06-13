@@ -1,5 +1,6 @@
 let () =
   Alcotest.run "Test terms enumerator"
   [
-     "Floor data", Test_block_pointer.tests;
+     "Block pointer", Test_block_pointer.tests;
+     "Lowercase ascii compression", Test_lowercase_ascii_compression.tests;
   ]

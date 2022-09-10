@@ -48,5 +48,5 @@ Example
 
 # Finding terms in the terms dictionary
 
-Thf block pointer gives the position of the block containing the data in dictionary.
+The block pointer gives the position of the block containing the data in dictionary.
 

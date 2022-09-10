@@ -1,0 +1,4 @@
+(executable
+ (name app)
+ (libraries lucene_segment lucene_data_input_2 lucene_fst lucene_terms_enumerator)
+ (preprocess (pps ppx_deriving.show ppx_deriving.eq)))

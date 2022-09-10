@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2022-07-09 Sat 11:08 -->
+<!-- 2022-09-10 Sat 22:03 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>LZ4 Compression</title>
@@ -201,107 +201,174 @@
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
-<li><a href="#orga6470dc">1. Decompressing</a></li>
-<li><a href="#orgf108cff">2. Deflate</a></li>
+<li><a href="#orgab0a8e1">1. The LZ4 block format</a></li>
+<li><a href="#org6d8a074">2. Compression</a></li>
 </ul>
 </div>
 </div>
-<p>
-<a href="https://github.com/lz4/lz4/blob/dev/doc/lz4_Block_format.md">LZ4 Block Format</a>
-</p>
 
-<p>
-<a href="http://fastcompression.blogspot.com/2011/05/lz4-explained.html">LZ4 Explained</a>
-</p>
-
-
-<div id="outline-container-orga6470dc" class="outline-2">
-<h2 id="orga6470dc"><span class="section-number-2">1.</span> Decompressing</h2>
+<div id="outline-container-orgab0a8e1" class="outline-2">
+<h2 id="orgab0a8e1"><span class="section-number-2">1.</span> The LZ4 block format</h2>
 <div class="outline-text-2" id="text-1">
+<p>
+<a href="https://github.com/lz4/lz4/blob/dev/doc/lz4_Block_format.md">LZ4 Block Format Description</a>.
+</p>
 
-<div id="orgcf570a3" class="figure">
+
+<p>
+An lz4 compressed <b>block</b> contains multiple <b>sequences</b>. Each <b>sequence</b> can contain two parts. A literal string which can be copied into the output. And a <b>match</b> which points to a substring in the uncompressed output.
+</p>
+
+
+
+<div id="org9175130" class="figure">
 <p><img src="images/lz4-compressed-block.png" alt="lz4-compressed-block.png" />
 </p>
 </div>
 
-
 <p>
-Note: The int is little endian. The match length nibble contains the least significant bit.
-</p>
-
-
-<p>
-Each block contains two parts. The literal is appended to the uncmpressed data. The match points to bytes in the already uncompressed data that will be appended.
-</p>
-
-<p>
-The first byte of the block contains the the lengths of the match and the literal as 4 bit nibbles.
+A sequence starts with a <b>token</b> byte that contains two 4 bit nibbles.  The lower bits contain the literal's length. Literals of lengths 14 bytes and less can be represented by the nibble. Longer lengths require additional length bytes.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ocaml"><span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #daa520;">read_length_nibbles</span><span style="color: #4eee94;"> data</span> <span style="color: #f0e68c;">=</span>
-  <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #4eee94;">b</span> <span style="color: #f0e68c;">=</span> read_byte data <span style="color: #f5deb3; font-weight: bold;">in</span>
-  <span style="color: #f0e68c;">(</span>b <span style="color: #f0e68c;">land</span> 0xF<span style="color: #f0e68c;">,</span> b <span style="color: #f0e68c;">lsr</span> 4<span style="color: #f0e68c;">)</span>
-</pre>
-</div>
-
-<p>
-When a length is greater than 16 extra bytes may be read.
-</p>
-
-<div class="org-src-container">
-<pre class="src src-ocaml">
-<span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #f5deb3; font-weight: bold;">rec</span> <span style="color: #daa520;">read_length_bytes</span><span style="color: #4eee94;"> </span><span style="color: #f0e68c;">()</span> <span style="color: #f0e68c;">=</span>
-  <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #4eee94;">b</span> <span style="color: #f0e68c;">=</span> read_byte data <span style="color: #f5deb3; font-weight: bold;">in</span>
-  <span style="color: #00bfff;">if</span> b <span style="color: #f0e68c;">&lt;</span> 255 <span style="color: #00bfff;">then</span>
+<pre class="src src-ocaml"><span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #f5deb3; font-weight: bold;">rec</span> <span style="color: #c678dd;">read_length_bytes</span><span style="color: #dcaeea;"> data</span> <span style="color: #f0e68c;">=</span>
+  <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">b</span> <span style="color: #f0e68c;">=</span> <span style="color: #ECBE7B;">Reader.</span>read_byte data <span style="color: #f5deb3; font-weight: bold;">in</span>
+  <span style="color: #51afef;">if</span> b <span style="color: #f0e68c;">&lt;</span> 255 <span style="color: #51afef;">then</span>
     b
-  <span style="color: #00bfff;">else</span>
-    b <span style="color: #f0e68c;">+</span> read_length_bytes <span style="color: #f0e68c;">()</span>
+  <span style="color: #51afef;">else</span>
+    b <span style="color: #f0e68c;">+</span> read_length_bytes data
 
-<span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #daa520;">read_length</span><span style="color: #4eee94;"> length_nibble data</span> <span style="color: #f0e68c;">=</span>
-  <span style="color: #00bfff;">if</span> length_nibble <span style="color: #f0e68c;">&lt;</span> 16 <span style="color: #00bfff;">then</span>
+<span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #c678dd;">read_length</span><span style="color: #dcaeea;"> length_nibble data</span> <span style="color: #f0e68c;">=</span>
+  <span style="color: #51afef;">if</span> length_nibble <span style="color: #f0e68c;">&lt;</span> 15 <span style="color: #51afef;">then</span>
     length_nibble
-  <span style="color: #00bfff;">else</span>
-    length_nibble <span style="color: #f0e68c;">+</span> read_length_bytes <span style="color: #f0e68c;">()</span>
+  <span style="color: #51afef;">else</span>
+    length_nibble <span style="color: #f0e68c;">+</span> read_length_bytes data
 
-</pre>
-</div>
-
-
-<div class="org-src-container">
-<pre class="src src-ocaml"><span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #daa520;">decompress_block</span><span style="color: #4eee94;"> decompressed_length buffer data</span> <span style="color: #f0e68c;">=</span>
-  <span style="color: #00bfff;">if</span> decompressed_length <span style="color: #f0e68c;">&gt;</span> <span style="color: #98f5ff;">Buffer.</span>length buffer <span style="color: #00bfff;">then</span>
-    <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #f0e68c;">(</span><span style="color: #4eee94;">literal_length_nibble</span><span style="color: #f0e68c;">,</span><span style="color: #4eee94;"> match_length_nibble</span><span style="color: #f0e68c;">)</span> <span style="color: #f0e68c;">=</span> read_length_nibbles data <span style="color: #f5deb3; font-weight: bold;">in</span>
-    <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #4eee94;">literal_length</span> <span style="color: #f0e68c;">=</span> read_length literal_length_nibble data <span style="color: #f5deb3; font-weight: bold;">in</span>
-    <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #4eee94;">literal</span> <span style="color: #f0e68c;">=</span> read_n_bytes data literal_length <span style="color: #f5deb3; font-weight: bold;">in</span>
-    <span style="color: #98f5ff;">Buffer.</span>add_string buffer literal<span style="color: #f0e68c;">;</span>
-    <span style="color: #00bfff;">if</span> decompressed_length <span style="color: #f0e68c;">&gt;</span> <span style="color: #98f5ff;">Buffer.</span>length buffer <span style="color: #00bfff;">then</span>
-      <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #4eee94;">offset</span> <span style="color: #f0e68c;">=</span> read_u16_le data <span style="color: #f5deb3; font-weight: bold;">in</span>
-      <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #4eee94;">match_length</span> <span style="color: #f0e68c;">=</span> read_length match_length_literal data <span style="color: #f5deb3; font-weight: bold;">in</span>
-      <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #4eee94;">matched</span> <span style="color: #f0e68c;">=</span> <span style="color: #98f5ff;">Buffer.</span>sub buffer <span style="color: #f0e68c;">(</span><span style="color: #98f5ff;">Buffer.</span>length buffer <span style="color: #f0e68c;">-</span> offset<span style="color: #f0e68c;">)</span> match_length <span style="color: #f5deb3; font-weight: bold;">in</span>
-      <span style="color: #98f5ff;">Buffer.</span>add_string buffer matched
 </pre>
 </div>
 
 <p>
-<a href="https://github.com/lz4/lz4/tree/dev/lib">https://github.com/lz4/lz4/tree/dev/lib</a>
+If the value of the length nibble is less than 15 no extra bytes are required.
 </p>
+
+<div class="org-src-container">
+<pre class="src src-ocaml">read_length 14 <span style="color: #f0e68c;">(</span><span style="color: #ECBE7B;">Reader.</span>of_string <span style="color: #98be65;">""</span><span style="color: #f0e68c;">)</span>
+</pre>
+</div>
+
+<pre class="example">
+Line 1, characters 0-11:
+1 | read_length 14 (Reader.of_string "");;
+    ^^^^^^^^^^^
+Error: Unbound value read_length
+</pre>
+
+
+
+<p>
+If the length nibble is 15 an extra byte will be read and added to the total length.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ocaml">read_length 15 <span style="color: #f0e68c;">(</span><span style="color: #ECBE7B;">Reader.</span>of_string <span style="color: #98be65;">"\x00"</span><span style="color: #f0e68c;">)</span>
+</pre>
+</div>
+
+<pre class="example">
+Line 1, characters 0-11:
+1 | read_length 15 (Reader.of_string "\x00");;
+    ^^^^^^^^^^^
+Error: Unbound value read_length
+</pre>
+
+
+<p>
+If the byte read is 255 then 255 is added to the total length and an extra byte is read.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ocaml">read_length 15 <span style="color: #f0e68c;">(</span><span style="color: #ECBE7B;">Reader.</span>of_string <span style="color: #98be65;">"\xFF\x03"</span><span style="color: #f0e68c;">)</span>
+</pre>
+</div>
+
+<pre class="example">
+Line 1, characters 0-11:
+1 | read_length 15 (Reader.of_string "\xFF\x03");;
+    ^^^^^^^^^^^
+Error: Unbound value read_length
+</pre>
+
+
+<p>
+Once the length of the lteral is calculated the bytes can be copied from the sequence and appended onto the uncompressed buffer.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ocaml"><span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #c678dd;">copy_literal</span><span style="color: #dcaeea;"> data length buffer</span> <span style="color: #f0e68c;">=</span>
+  <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">bytes</span> <span style="color: #f0e68c;">=</span> <span style="color: #ECBE7B;">Reader.</span>read_n_bytes data length <span style="color: #f5deb3; font-weight: bold;">in</span>
+  <span style="color: #ECBE7B;">Buffer.</span>add_string buffer bytes
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ocaml"><span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">buffer</span> <span style="color: #f0e68c;">=</span> <span style="color: #ECBE7B;">Buffer.</span>create 0<span style="color: #ff4500;">;;</span>
+<span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">data</span> <span style="color: #f0e68c;">=</span> <span style="color: #ECBE7B;">Reader.</span>of_string <span style="color: #98be65;">"copied literal"</span><span style="color: #ff4500;">;;</span>
+copy_literal data 14 buffer<span style="color: #ff4500;">;;</span>
+<span style="color: #ECBE7B;">Buffer.</span>contents buffer
+</pre>
+</div>
+
+<p>
+The second part of the sequence is the match. The match copies bytes from the uncompressed buffer and appends them to the bufffer. The bytes are copied from an offest up to 65535 bytes before the current end of the buffer. The match length is calculated in a similar manner to the literal length, using extra match lenght bytes if required.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-ocaml"><span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #c678dd;">copy_match</span><span style="color: #dcaeea;"> match_length_nibble data buffer</span> <span style="color: #f0e68c;">=</span>
+  <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">offset</span> <span style="color: #f0e68c;">=</span> <span style="color: #ECBE7B;">Reader.</span>read_u16_le data <span style="color: #f5deb3; font-weight: bold;">in</span>
+  <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">match_length</span> <span style="color: #f0e68c;">=</span> read_length match_length_nibble data <span style="color: #f5deb3; font-weight: bold;">in</span>
+  <span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">matched</span> <span style="color: #f0e68c;">=</span> <span style="color: #ECBE7B;">Buffer.</span>sub buffer <span style="color: #a9a1e1;">~pos</span><span style="color: #f0e68c;">:(</span><span style="color: #ECBE7B;">Buffer.</span>length buffer <span style="color: #f0e68c;">-</span> offset<span style="color: #f0e68c;">)</span> <span style="color: #a9a1e1;">~len</span><span style="color: #f0e68c;">:</span>match_length <span style="color: #f0e68c;">|&gt;</span> <span style="color: #ECBE7B;">Bytes.</span>to_string <span style="color: #f5deb3; font-weight: bold;">in</span>
+  <span style="color: #ECBE7B;">Buffer.</span>add_string buffer matched
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-ocaml"><span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">buffer</span> <span style="color: #f0e68c;">=</span> <span style="color: #ECBE7B;">Buffer.</span>create 0<span style="color: #ff4500;">;;</span>
+<span style="color: #ECBE7B;">Buffer.</span>add_string buffer <span style="color: #98be65;">"copied match bytes "</span><span style="color: #ff4500;">;;</span>
+<span style="color: #f5deb3; font-weight: bold;">let</span> <span style="color: #dcaeea;">data</span> <span style="color: #f0e68c;">=</span> <span style="color: #ECBE7B;">Reader.</span>of_string <span style="color: #98be65;">"\x13\x00\x03"</span><span style="color: #ff4500;">;;</span>
+copy_match 15 data buffer<span style="color: #ff4500;">;;</span>
+<span style="color: #ECBE7B;">Buffer.</span>contents buffer
+</pre>
+</div>
+
+<pre class="example">
+copied match bytes 
+</pre>
 </div>
 </div>
 
-
-<div id="outline-container-orgf108cff" class="outline-2">
-<h2 id="orgf108cff"><span class="section-number-2">2.</span> Deflate</h2>
+<div id="outline-container-org6d8a074" class="outline-2">
+<h2 id="org6d8a074"><span class="section-number-2">2.</span> Compression</h2>
 <div class="outline-text-2" id="text-2">
 <p>
-<a href="https://datatracker.ietf.org/doc/html/rfc1951">Deflate RFC</a>
+Compression works by finding matching substrings. A hashtable can speed up the search of substrings.
+</p>
+
+
+
+<div id="orgf376ab9" class="figure">
+<p><img src="images/lz4-compression.png" alt="lz4-compression.png" />
+</p>
+</div>
+
+<p>
+In the example the entry in the hash table for the string "cata" points to index 0. The literal "catamaran and " is copied into the first sequence, The prefix "cata" is found in the hash and the string "catamaran" matches the string at index 0. It is used t construct the hash. "s end" is a five character literal that marks the end of the block.
 </p>
 </div>
 </div>
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Sidharth Kuruvila</p>
-<p class="date">Created: 2022-07-09 Sat 11:08</p>
+<p class="date">Created: 2022-09-10 Sat 22:03</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

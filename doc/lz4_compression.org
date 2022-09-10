@@ -7,95 +7,55 @@
 #+end_src
 
 #+RESULTS:
-
-
-
-[[https://github.com/lz4/lz4/blob/dev/doc/lz4_Block_format.md][LZ4 Block Format]]
-
-[[http://fastcompression.blogspot.com/2011/05/lz4-explained.html][LZ4 Explained]]
-
-
-* Decompressing
+: /Users/sidharth/.opam/4.14.0/lib/cstruct: added to search path
+: /Users/sidharth/.opam/4.14.0/lib/cstruct/cstruct.cma: loaded
+: /Users/sidharth/.opam/4.14.0/lib/hex: added to search path
+: /Users/sidharth/.opam/4.14.0/lib/hex/hex.cma: loaded
 
 
 #+begin_src ocaml :exports none
-(*
- Copied from
- https://stackoverflow.com/questions/53839695/how-do-i-read-the-entire-content-of-a-given-file-into-a-string  *)
-let read_whole_file filename =
-    let ch = open_in filename in
-    let s = really_input_string ch (in_channel_length ch) in
-    close_in ch;
-    s
-#+end_src
+  module Reader = struct
+    type t = {
+        mutable idx: int;
+        bytes: String.t
+      };;
+    let of_string s = { idx = 0; bytes = s  };;
 
-#+RESULTS:
-: <fun>
-
-#+begin_src ocaml  :exports results :results output
-  let replace_char c r s =
-    let bytes = Bytes.of_string s in
-    for i = 0 to Bytes.length bytes - 1 do
-      if Char.equal (Bytes.get bytes i) c then
-        Bytes.set bytes i r
-    done;
-    Bytes.to_string bytes;;
-  let read_whole_file filename =
-    let ch = open_in filename in
-    let s = really_input_string ch (in_channel_length ch) in
-    close_in ch;
-    s;;
-  let compressed = read_whole_file "lz4-compressed.bytes" |> replace_char '"' '*' in
-      Hex.hexdump ~print_row_numbers:true ~print_chars:true (Hex.of_string compressed)
-
-#+end_src
-
-#+RESULTS:
-#+begin_example
-00000000: b231 2d30 342d 3031 312d 3035 0700 1138  .1-04-011-05...8
-00000001: 0700 2a31 3007 0030 322d 3004 0003 0700  ..*10..02-0.....
-00000002: 1233 0700 0031 0042 322d 3036 0700 0031  .3...1.B2-06...1
-00000003: 0041 322d 3039 0700 0138 0000 2700 0207  .A2-09...8..'...
-00000004: 0000 3800 1233 3800 1233 3800 1233 6900  ..8..38..38..3i.
-00000005: 1233 3f00 4233 2d30 3707 0000 4600 1233  .3?.B3-07...F..3
-00000006: 4600 1433 4600 008f 0000 0700 0046 0000  F..3F........F..
-00000007: 3c00 0207 0003 0e00 0054 0012 3454 0012  <........T..4T..
-00000008: 3454 0012 3454 0012 3454 0012 3454 0012  4T..4T..4T..4T..
-00000009: 3454 0012 3454 0070 342d 3131 2d30 3147  4T..4T.p4-11-01G
-00000010: 071f 0904 0404 0404 0401 0608 0804 0806  ................
-00000011: 0606 0606 0601 0e0c 0e0a 0a06 0c0c 0a0e  ................
-00000012: 012a 9eb9 550d 050d 0909 0004 0404 0404  .*..U...........
-00000013: 0429 0006 0808 0408 0606 0606 0606 5b00  .)............[.
-00000014: 0e0c 0e0a 0a08 0e0e 0c10 b301 4a9e 10b2  ............J...
-00000015: 352d 3031 2d                             5-01-
-#+end_example
-
-
-#+begin_src ocaml :exports none
-  type data = {
-      mutable idx: int;
-      bytes: String.t
-    };;
-  let make_data s = { idx = 0; bytes = s  };;
-  let read_byte data = begin
-    let { idx; bytes } = data in
-    let r = String.get bytes idx in
-    data.idx <- idx + 1;
-    r |> int_of_char
+    let read_byte data = begin
+        let { idx; bytes } = data in
+        let r = String.get bytes idx in
+        data.idx <- idx + 1;
+        r |> int_of_char
+      end
+    let read_n_bytes data n =
+      let {idx; bytes } = data in
+      let s =  String.sub ~pos:idx ~len:n bytes in
+      data.idx <- idx + n;
+      s
+    let read_u16_le data =
+      let b1 = read_byte data in
+      let b2 = read_byte data in
+      (b2 lsr 8) lor b1
   end
-  let read_n_bytes data n =
-    let {idx; bytes } = data in
-    let s =  String.sub ~pos:idx ~len:n bytes in
-    data.idx <- idx + n;
-    s
-  let read_u16_le data =
-    let b1 = read_byte data in
-    let b2 = read_byte data in
-    (b2 lsr 8) lor b1
 #+end_src
 
 #+RESULTS:
-: <fun>
+: module Reader :
+:   sig
+:     type t = { mutable idx : int; bytes : Core.String.t; }
+:     val of_string : Core.String.t -> t
+:     val read_byte : t -> int
+:     val read_n_bytes : t -> int -> Core.String.t
+:     val read_u16_le : t -> int
+:   end
+
+
+* The LZ4 block format
+
+[[https://github.com/lz4/lz4/blob/dev/doc/lz4_Block_format.md][LZ4 Block Format Description]].
+
+
+An lz4 compressed *block* contains multiple *sequences*. Each *sequence* can contain two parts. A literal string which can be copied into the output. And a *match* which points to a substring in the uncompressed output.
 
 
 #+BEGIN_SRC dot :file images/lz4-compressed-block.png :exports results
@@ -121,29 +81,11 @@ let read_whole_file filename =
 #+RESULTS:
 [[file:images/lz4-compressed-block.png]]
 
-
-Note: The int is little endian. The match length nibble contains the least significant bit.
-
-
-Each block contains two parts. The literal is appended to the uncompressed data. The match points to bytes in the already uncompressed data that will be appended.
-
-The first byte of the block contains the the lengths of the match and the literal as 4 bit nibbles.
+A sequence starts with a *token* byte that contains two 4 bit nibbles.  The lower bits contain the literal's length. Literals of lengths 14 bytes and less can be represented by the nibble. Longer lengths require additional length bytes.
 
 #+begin_src ocaml
-  let read_length_nibbles data =
-    let b = read_byte data in
-    (b land 0xF, b lsr 4)
-#+end_src
-
-#+RESULTS:
-: <fun>
-
-When a length is greater than 15 extra bytes may be read.
-
-#+begin_src ocaml
-
   let rec read_length_bytes data =
-    let b = read_byte data in
+    let b = Reader.read_byte data in
     if b < 255 then
       b
     else
@@ -160,81 +102,117 @@ When a length is greater than 15 extra bytes may be read.
 #+RESULTS:
 : <fun>
 
+If the value of the length nibble is less than 15 no extra bytes are required.
+
+#+begin_src ocaml :exports both
+  read_length 14 (Reader.of_string "")
+#+end_src
+
+#+RESULTS:
+: 14
+
+
+If the length nibble is 15 an extra byte will be read and added to the total length.
+
+#+begin_src ocaml :exports both
+  read_length 15 (Reader.of_string "\x00")
+#+end_src
+
+#+RESULTS:
+: 15
+
+If the byte read is 255 then 255 is added to the total length and an extra byte is read.
+
+#+begin_src ocaml :exports both
+  read_length 15 (Reader.of_string "\xFF\x03")
+#+end_src
+
+#+RESULTS:
+: 273
+
+Once the length of the lteral is calculated the bytes can be copied from the sequence and appended onto the uncompressed buffer.
 
 #+begin_src ocaml
-  let decompress_block decompressed_length buffer data =
-    if decompressed_length > Buffer.length buffer then begin
-      let (match_length_nibble, literal_length_nibble) = read_length_nibbles data in
-      let literal_length = read_length literal_length_nibble data in
-      let literal = read_n_bytes data literal_length in
-      Printf.printf "liter = %s\n" literal;
-      Buffer.add_string buffer literal;
-      if decompressed_length > Buffer.length buffer then begin
-        let offset = read_u16_le data in
-        let match_length = read_length match_length_nibble data in
-        let matched = Buffer.sub buffer ~pos:(Buffer.length buffer - offset) ~len:match_length |> Bytes.to_string in
-        Printf.printf "Offset: %d, match_length: %d, buffer_length: %d, matched: %s\n" offset match_length (Buffer.length buffer) matched;
-        Buffer.add_string buffer matched
-      end
-    end
+  let copy_literal data length buffer =
+    let bytes = Reader.read_n_bytes data length in
+    Buffer.add_string buffer bytes
 #+end_src
 
 #+RESULTS:
 : <fun>
 
+#+begin_src ocaml :exports both
+  let buffer = Buffer.create 0;;
+  let data = Reader.of_string "copied literal";;
+  copy_literal data 14 buffer;;
+  Buffer.contents buffer
+#+end_src
+
+#+RESULTS:
+: copied literal
+
+The second part of the sequence is the match. The match copies bytes from the uncompressed buffer and appends them to the bufffer. The bytes are copied from an offest up to 65535 bytes before the current end of the buffer. The match length is calculated in a similar manner to the literal length, using extra match lenght bytes if required.
 
 #+begin_src ocaml
-  let decompress_blocks decompressed_length data =
-    let buffer = Buffer.create decompressed_length in
-    let rec loop () =
-      if decompressed_length > Buffer.length buffer then begin
-        decompress_block decompressed_length buffer data;
-        loop ()
-      end in
-    loop ();
-    Buffer.contents buffer
+  let copy_match match_length_nibble data buffer =
+    let offset = Reader.read_u16_le data in
+    let match_length = read_length match_length_nibble data in
+    let matched = Buffer.sub buffer ~pos:(Buffer.length buffer - offset) ~len:match_length |> Bytes.to_string in
+    Buffer.add_string buffer matched
 #+end_src
 
 #+RESULTS:
 : <fun>
 
-
-#+begin_src ocaml
-  let data = make_data (read_whole_file "lz4-compressed.bytes") in
-      decompress_blocks 245 data
+#+begin_src ocaml :exports both
+  let buffer = Buffer.create 0;;
+  Buffer.add_string buffer "copied match bytes ";;
+  let data = Reader.of_string "\x13\x00\x03";;
+  copy_match 15 data buffer;;
+  Buffer.contents buffer
 #+end_src
 
 #+RESULTS:
-#+begin_example
-liter = 1-04-011-05
-Offset: 7, match_length: 2, buffer_length: 11
-liter = 8
-Offset: 7, match_length: 1, buffer_length: 14
-liter = 10
-Offset: 7, match_length: 2, buffer_length: 17
-liter = 2-0
-Offset: 4, match_length: 0, buffer_length: 22
-liter = 
-Offset: 7, match_length: 3, buffer_length: 22
-liter = 3
-Offset: 7, match_length: 2, buffer_length: 26
-liter = 
-Exception: (Invalid_argument "Negative position: -21").
-Raised at Stdlib.invalid_arg in file "stdlib.ml", line 30, characters 20-45
-Called from Base__Ordered_collection_common0.slow_check_pos_len_exn in file "src/ordered_collection_common0.ml", line 9, characters 2-293
-Called from Base__Blit.Make_gen.sub in file "src/blit.ml", line 47, characters 4-88
-Called from decompress_block in file "//toplevel//", line 11, characters 20-92
-Called from decompress_blocks.loop in file "//toplevel//", line 5, characters 6-54
-Called from decompress_blocks in file "//toplevel//", line 8, characters 2-9
-Called from Stdlib__Fun.protect in file "fun.ml", line 33, characters 8-15
-Re-raised at Stdlib__Fun.protect in file "fun.ml", line 38, characters 6-52
-Called from Topeval.load_lambda in file "toplevel/byte/topeval.ml", line 89, characters 4-150
-#+end_example
+: copied match bytes copied match bytes
+
+* Compression
+
+Compression works by finding matching substrings. A hashtable can speed up the search of substrings.
 
 
-https://github.com/lz4/lz4/tree/dev/lib
+#+begin_src dot :file images/lz4-compression.png :exports results
+  digraph {
+
+        hash_table [
+         shape = record;
+         label="{hash_table|nil|<hash1>0|nil} "
+        ];
 
 
-* Deflate
+        compressed [
+          shape = record;
+          label = "{Compressed Segments |{ {Literal | <literal1>catamaran and | <literal2>s end} | { Match Offset | <start_index1>14 | 0} |{Match Length | <end_index1>9 | 0}}}"
+        ];
 
-[[https://datatracker.ietf.org/doc/html/rfc1951][Deflate RFC]]
+
+        uncompressed [
+          shape = record;
+          label = "{{<index0>c|a|t|a|m|a|r|a|<index8>n| |a|n|d| |<index14>c|a|t|a|m|a|r|a|<index23>n|<index24>s| |e|n|d}}"
+        ];
+
+        hash_table:hash1 -> uncompressed:index0;
+        compressed:start_index1-> uncompressed:index14;
+        compressed:end_index1 -> uncompressed:index23;
+        compressed:literal1 -> uncompressed:index0;
+        compressed:literal2 -> uncompressed:index24;
+
+  }
+
+#+end_src
+
+#+RESULTS:
+[[file:images/lz4-compression.png]]
+
+In the example the entry in the hash table for the string "cata" points to index 0. The literal "catamaran and " is copied into the first sequence, The prefix "cata" is found in the hash and the string "catamaran" matches the string at index 0. It is used t construct the hash. "s end" is a five character literal that marks the end of the block.
+
+

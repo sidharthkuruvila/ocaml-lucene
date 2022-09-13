@@ -1,12 +1,15 @@
 
 # Table of Contents
 
-1.  [The LZ4 block format](#orga26d47a)
-2.  [Compression](#orgd05f788)
+1.  [The LZ4 block format](#org0e8eb45)
+2.  [Compression](#orga28887a)
+3.  [End of compression](#org1e5a7e1)
+    1.  [Strings shorter than 11 bytes long cannot be compressed](#orgb9e1989)
+    2.  [Short strings will be represented by a single final sequence](#org29432b3)
 
 
 
-<a id="orga26d47a"></a>
+<a id="org0e8eb45"></a>
 
 # The LZ4 block format
 
@@ -62,11 +65,13 @@ Once the length of the lteral is calculated the bytes can be copied from the seq
 
     copied literal
 
-The second part of the sequence is the match. The match copies bytes from the uncompressed buffer and appends them to the bufffer. The bytes are copied from an offest up to 65535 bytes before the current end of the buffer. The match length is calculated in a similar manner to the literal length, using extra match lenght bytes if required.
+The second part of the sequence is the match. The match copies bytes from the uncompressed buffer and appends them to the bufffer. The bytes are copied from an offest up to 65535 bytes before the current end of the buffer.
+
+The match length is calculated in a similar manner to the literal length, using extra match lenght bytes if required. 4 bytes need to be added to the match length. This is beccause a match will be at least 4 bytes long.
 
     let copy_match match_length_nibble data buffer =
       let offset = Reader.read_u16_le data in
-      let match_length = read_length match_length_nibble data in
+      let match_length = read_length match_length_nibble data + 4in
       let matched = Buffer.sub buffer ~pos:(Buffer.length buffer - offset) ~len:match_length |> Bytes.to_string in
       Buffer.add_string buffer matched
 
@@ -79,7 +84,7 @@ The second part of the sequence is the match. The match copies bytes from the un
     copied match bytes copied match bytes
 
 
-<a id="orgd05f788"></a>
+<a id="orga28887a"></a>
 
 # Compression
 
@@ -88,4 +93,25 @@ Compression works by finding matching substrings. A hashtable can speed up the s
 ![img](images/lz4-compression.png)
 
 In the example the entry in the hash table for the string "cata" points to index 0. The literal "catamaran and " is copied into the first sequence, The prefix "cata" is found in the hash and the string "catamaran" matches the string at index 0. It is used t construct the hash. "s end" is a five character literal that marks the end of the block. 
+
+
+<a id="org1e5a7e1"></a>
+
+# End of compression
+
+The last sequence of the block will only contain a literal. The last literal will be at least 5 bytes long.
+
+This means a few things
+
+
+<a id="orgb9e1989"></a>
+
+## Strings shorter than 11 bytes long cannot be compressed
+
+The smallest compressed block will contain two sequences. The first sequence will have a 4 byte literal. The block will be of length token size + 4 + token size + 5 = 1 + 4 + 1 + 5 = 11.
+
+
+<a id="org29432b3"></a>
+
+## Short strings will be represented by a single final sequence
 

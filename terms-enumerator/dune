@@ -1,4 +1,4 @@
 (library
  (name lucene_terms_enumerator)
- (libraries lucene_fst lucene_data_input_2)
+ (libraries lucene_fst lucene_data_input_2 lucene_data_output)
  (preprocess (pps ppx_deriving.show ppx_deriving.ord)))

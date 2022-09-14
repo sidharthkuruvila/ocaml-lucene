@@ -58,7 +58,7 @@ Otherwise read the position from arc data as a vint.
 
 ![FST binary search](images/fst-binary-search.png "Binary search")
 
-An arc can be be found using a binary search. 
+An arc can be be found using a binary search.
 
 ## Linear Scan
 

@@ -10,3 +10,5 @@ I try to document what I've learned.
  * [The terms index](doc/terms_index.md)
  * [Constructing an acyclic transducer](doc/constructing_an_acyclic_transducer.md)
  * [Compiling a byte array fst](doc/compiling_byte_array_fst_states.md)
+ * [Compressing using lowercase ascii compression](doc/lowercase_ascii_compression.md)
+ * [Compressing using lz4 compression](doc/lz4_compression.md)
